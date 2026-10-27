@@ -90,4 +90,4 @@ bike_geo简介.txt     面向车架/产品同行的产品简介
 
 Bike Geo v1.1 · 2026-10
 
-> Standover 按 Specialized 方法计算：五通中心前方 120 mm 处，地面到上管的垂直距离。
+> Standover 按 Specialized 方法计算：五通中心前方 125 mm 处，地面到上管的垂直距离。

@@ -72,7 +72,7 @@ Spacer Height 为头管顶端到把立之间的垫圈总高度：在画布上沿
 前叉长度按 A2C（沿舵管方向、忽略 rake）输入；程序内部用 √(A2C² + rake²) 计入前轴
 偏移，得到前轴到头管下沿的真实直线距离。因此表格里的 Fork Length (full) 可以直接填入。
 
-Standover Height 按 Specialized 方法：在五通中心前方 120 mm 的垂直线上，量地面到上管的
+Standover Height 按 Specialized 方法：在五通中心前方 125 mm 的垂直线上，量地面到上管的
 垂直距离。不同品牌的 published standover 可能采用别的测量位置，因此本工具结果与部分
 品牌表可能相差数毫米，属于测量定义差异。
 

@@ -68,7 +68,7 @@ derived by `js/geometry.js`:
   `√(chainstay² − bbDrop²) + √(frontCenter² − bbDrop²)`.
 - BB height, chainstay horizontal, front-center horizontal, effective top tube
 - **standover height** — ground to top tube, measured at
-  `x = bb.x + 120 mm` (Specialized convention). The top-tube line is the
+  `x = bb.x + 125 mm` (Specialized convention). The top-tube line is the
   drawing's seat-tube/head-tube junction line:
   `y = ttSeat.y + (x − ttSeat.x) · (ttHead.y − ttSeat.y) / (ttHead.x − ttSeat.x)`.
 - **trail** and **mechanical trail** from the steering-axis geometry
@@ -84,7 +84,7 @@ headTubeBottom   = (frontAxle − rake·n) + forkLengthA2C·u
 forkLengthStraight = √(forkLengthA2C² + rake²)
 headTubeTop      = headTubeBottom + headTubeLength·u
 reach / stack    = headTubeTop − bb
-standover        = topTubeY(bb.x + 120) − groundY
+standover        = topTubeY(bb.x + 125) − groundY
 wheelbase        = frontAxle.x
 ```
 

@@ -126,7 +126,7 @@ Fork length（A2C，忽略 rake）、Fork offset 从前轴反推；Wheelbase 则
 Reach                    五通垂线 → 头管顶部中心的水平距离
 Stack                    五通中心 → 头管顶部中心的垂直距离
 Stack / reach ratio      堆高 / 前伸比
-Standover height         地面 → 上管（在五通中心前方 120 mm 的垂直
+Standover height         地面 → 上管（在五通中心前方 125 mm 的垂直
                          测量线上；按 Specialized 方法，其它品牌
                          的 published standover 可能采用别的测量点）
 Tire outer radius        轮胎外半径
@@ -304,7 +304,7 @@ Export templates / Import templates：
     整车高度差异；再按一次恢复后轴对齐。
 
 问：Standover height 是怎么算的？
-答：按 Specialized 方法：在五通中心前方 120 mm 处取一条垂直线，量
+答：按 Specialized 方法：在五通中心前方 125 mm 处取一条垂直线，量
     地面到上管的垂直距离。不同品牌的几何表可能采用不同测量点（例如
     靠近座管、或上管中点），所以本工具的 Standover 与某些 published
     值可能相差几毫米，属于测量定义差异。

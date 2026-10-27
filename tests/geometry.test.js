@@ -219,10 +219,10 @@ test('parameter catalogue covers every displayed datum once', () => {
   assert.ok(!keys.includes('wheelFlop'), 'wheel flop was removed');
 });
 
-test('standover height uses the Specialized 120 mm-forward method', () => {
+test('standover height uses the Specialized 125 mm-forward method', () => {
   const g = Geo.solve(TARMAC);
-  near(g.standoverOffset, 120, 1e-9, 'measurement offset');
-  near(g.standoverPoint.x, g.bb.x + 120, 1e-9, 'measurement x');
+  near(g.standoverOffset, 125, 1e-9, 'measurement offset');
+  near(g.standoverPoint.x, g.bb.x + 125, 1e-9, 'measurement x');
   const a = g.anchors.ttSeat;
   const b = g.anchors.ttHead;
   const t = (g.standoverPoint.x - a.x) / (b.x - a.x);

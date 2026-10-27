@@ -102,7 +102,7 @@
 
   // Standover height is measured vertically from the ground to the top tube
   // at this horizontal distance in front of the BB center (Specialized method).
-  var STANDOVER_OFFSET = 120;
+  var STANDOVER_OFFSET = 125;
 
   /* ------------------------------------------------------------------ *
    * Small helpers
@@ -315,7 +315,7 @@
     { group: 'computed', key: 'stackReachRatio', label: 'Stack / reach ratio', unit: ':1', precision: 2,
       parts: ['headtube'] },
     { group: 'computed', key: 'standoverHeight', label: 'Standover height', unit: 'mm', precision: 1,
-      hint: 'Ground to top tube, measured 120 mm in front of the BB center (Specialized method)',
+      hint: 'Ground to top tube, measured 125 mm in front of the BB center (Specialized method)',
       parts: ['toptube'] },
     { group: 'computed', key: 'tireRadius', label: 'Tire outer radius', unit: 'mm', precision: 1,
       parts: ['wheel-rear', 'wheel-front', 'tire-rear', 'tire-front'] },
