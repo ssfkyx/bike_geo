@@ -9,8 +9,8 @@ Reach / Stack / Wheelbase / Trail 等结果，并在点阵纸风格的画布上�
 
 ## 功能
 
-- **参数化车架几何**：11 项必要输入，自动推导 12 项结果
-  （Reach / Stack / Stack-Reach 比、Wheelbase、Trail、有效上管、轮胎外径等）；
+- **参数化车架几何**：11 项必要输入，自动推导 13 项结果
+  （Reach / Stack / Stack-Reach 比、Standover、Wheelbase、Trail、有效上管、轮胎外径等）；
   Fork length 使用 A2C（沿舵管、忽略 rake），内部按 `√(A2C² + rake²)` 计入前轴偏移
 - **最多 3 台车彩色叠画对比**（黑 / baby 蓝 / 活力橙），带数值差表；
   轮胎环带按车色淡染
@@ -89,3 +89,5 @@ bike_geo简介.txt     面向车架/产品同行的产品简介
 ## 版本
 
 Bike Geo v1.1 · 2026-10
+
+> Standover 按 Specialized 方法计算：五通中心前方 120 mm 处，地面到上管的垂直距离。

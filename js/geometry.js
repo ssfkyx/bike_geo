@@ -100,6 +100,10 @@
     dtHeadFactor: 0.22 // down tube joins the head tube this far from its bottom
   });
 
+  // Standover height is measured vertically from the ground to the top tube
+  // at this horizontal distance in front of the BB center (Specialized method).
+  var STANDOVER_OFFSET = 120;
+
   /* ------------------------------------------------------------------ *
    * Small helpers
    * ------------------------------------------------------------------ */
@@ -212,6 +216,18 @@
     var ttHead = add(htTop, scaled(steerDir, -DRAW.ttHeadInset));
     var dtHead = add(htBottom, scaled(steerDir, DRAW.dtHeadFactor * input.headTubeLength));
 
+    // Standover height: vertical distance from the ground to the top tube,
+    // measured at x = bb.x + STANDOVER_OFFSET.
+    var standoverX = bb.x + STANDOVER_OFFSET;
+    var ttRun = ttHead.x - ttSeat.x;
+    var standoverT = ttRun === 0 ? 0 : (standoverX - ttSeat.x) / ttRun;
+    standoverT = clamp(standoverT, 0, 1);
+    var standoverPoint = {
+      x: ttSeat.x + ttRun * standoverT,
+      y: ttSeat.y + (ttHead.y - ttSeat.y) * standoverT
+    };
+    var standoverHeight = standoverPoint.y - groundY;
+
     // Rim line: inner edge of the tire.
     var rimRadius = Math.max(tireRadius - input.tireWidth, tireRadius * 0.55);
 
@@ -244,6 +260,9 @@
       trail: trail,
       mechanicalTrail: mechanicalTrail,
       stackReachRatio: stack / reach,
+      standoverHeight: standoverHeight,
+      standoverOffset: STANDOVER_OFFSET,
+      standoverPoint: standoverPoint,
       steeringGroundX: steeringGroundX,
       anchors: {
         ttSeat: ttSeat,
@@ -295,6 +314,9 @@
       parts: ['headtube', 'toptube'] },
     { group: 'computed', key: 'stackReachRatio', label: 'Stack / reach ratio', unit: ':1', precision: 2,
       parts: ['headtube'] },
+    { group: 'computed', key: 'standoverHeight', label: 'Standover height', unit: 'mm', precision: 1,
+      hint: 'Ground to top tube, measured 120 mm in front of the BB center (Specialized method)',
+      parts: ['toptube'] },
     { group: 'computed', key: 'tireRadius', label: 'Tire outer radius', unit: 'mm', precision: 1,
       parts: ['wheel-rear', 'wheel-front', 'tire-rear', 'tire-front'] },
     { group: 'computed', key: 'tireOuterDiameter', label: 'Tire outer diameter', unit: 'mm', precision: 1,
@@ -530,6 +552,7 @@
     INPUT_RULES: INPUT_RULES,
     PRESETS: PRESETS,
     DRAW: DRAW,
+    STANDOVER_OFFSET: STANDOVER_OFFSET,
     PARAMS: PARAMS,
     FITTING_FIELDS: FITTING_FIELDS,
     FITTING_RULES: FITTING_RULES,

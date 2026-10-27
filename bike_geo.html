@@ -1272,12 +1272,12 @@ input[type="number"]:focus {
       <div class="panel-scroll">
         <div id="view-params-body">
           <section class="group">
-            <h3>Necessary inputs <span id="input-count" class="count"></span></h3>
+            <h3>Data Input</h3>
             <div id="inputs-list" class="rows"></div>
           </section>
 
           <section class="group">
-            <h3>Compensated <span id="computed-count" class="count"></span></h3>
+            <h3>Result</h3>
             <div id="computed-list" class="rows"></div>
           </section>
 
@@ -1434,6 +1434,10 @@ input[type="number"]:focus {
     dtHeadFactor: 0.22 // down tube joins the head tube this far from its bottom
   });
 
+  // Standover height is measured vertically from the ground to the top tube
+  // at this horizontal distance in front of the BB center (Specialized method).
+  var STANDOVER_OFFSET = 120;
+
   /* ------------------------------------------------------------------ *
    * Small helpers
    * ------------------------------------------------------------------ */
@@ -1546,6 +1550,18 @@ input[type="number"]:focus {
     var ttHead = add(htTop, scaled(steerDir, -DRAW.ttHeadInset));
     var dtHead = add(htBottom, scaled(steerDir, DRAW.dtHeadFactor * input.headTubeLength));
 
+    // Standover height: vertical distance from the ground to the top tube,
+    // measured at x = bb.x + STANDOVER_OFFSET.
+    var standoverX = bb.x + STANDOVER_OFFSET;
+    var ttRun = ttHead.x - ttSeat.x;
+    var standoverT = ttRun === 0 ? 0 : (standoverX - ttSeat.x) / ttRun;
+    standoverT = clamp(standoverT, 0, 1);
+    var standoverPoint = {
+      x: ttSeat.x + ttRun * standoverT,
+      y: ttSeat.y + (ttHead.y - ttSeat.y) * standoverT
+    };
+    var standoverHeight = standoverPoint.y - groundY;
+
     // Rim line: inner edge of the tire.
     var rimRadius = Math.max(tireRadius - input.tireWidth, tireRadius * 0.55);
 
@@ -1578,6 +1594,9 @@ input[type="number"]:focus {
       trail: trail,
       mechanicalTrail: mechanicalTrail,
       stackReachRatio: stack / reach,
+      standoverHeight: standoverHeight,
+      standoverOffset: STANDOVER_OFFSET,
+      standoverPoint: standoverPoint,
       steeringGroundX: steeringGroundX,
       anchors: {
         ttSeat: ttSeat,
@@ -1629,6 +1648,9 @@ input[type="number"]:focus {
       parts: ['headtube', 'toptube'] },
     { group: 'computed', key: 'stackReachRatio', label: 'Stack / reach ratio', unit: ':1', precision: 2,
       parts: ['headtube'] },
+    { group: 'computed', key: 'standoverHeight', label: 'Standover height', unit: 'mm', precision: 1,
+      hint: 'Ground to top tube, measured 120 mm in front of the BB center (Specialized method)',
+      parts: ['toptube'] },
     { group: 'computed', key: 'tireRadius', label: 'Tire outer radius', unit: 'mm', precision: 1,
       parts: ['wheel-rear', 'wheel-front', 'tire-rear', 'tire-front'] },
     { group: 'computed', key: 'tireOuterDiameter', label: 'Tire outer diameter', unit: 'mm', precision: 1,
@@ -1864,6 +1886,7 @@ input[type="number"]:focus {
     INPUT_RULES: INPUT_RULES,
     PRESETS: PRESETS,
     DRAW: DRAW,
+    STANDOVER_OFFSET: STANDOVER_OFFSET,
     PARAMS: PARAMS,
     FITTING_FIELDS: FITTING_FIELDS,
     FITTING_RULES: FITTING_RULES,
@@ -2326,6 +2349,16 @@ input[type="number"]:focus {
     var hta = g.input.headTubeAngle * Math.PI / 180;
 
     switch (key) {
+      case 'standoverHeight': {
+        if (!g.standoverPoint) return [];
+        var standTop = P(g.standoverPoint);
+        var standGround = [standTop[0], groundScreen];
+        return [line(standTop, standGround, 'dim-line')].concat(
+          tag(ctx, [standTop[0] + ctx.fs * 1.2, (standTop[1] + standGround[1]) / 2],
+            'Standover ' + fmt(g.standoverHeight, 1) + ' mm', 'start')
+        );
+      }
+
       case 'spacerHeight': {
         if (!fitting || !fitting.points || !fitting.points.spacerEnd) return [];
         var spacerStart = P(fitting.points.spacerStart);
@@ -2959,8 +2992,6 @@ input[type="number"]:focus {
     exportBtn: document.getElementById('export-svg'),
     importBtn: document.getElementById('import-url'),
     toast: document.getElementById('toast'),
-    inputCount: document.getElementById('input-count'),
-    computedCount: document.getElementById('computed-count'),
     tabs: document.getElementById('bike-tabs'),
     addBike: document.getElementById('add-bike'),
     viewParams: document.getElementById('view-params'),
@@ -3894,26 +3925,18 @@ input[type="number"]:focus {
   }
 
   function buildRows() {
-    var inputCount = 0;
-    var computedCount = 0;
-
     Geo.PARAMS.forEach(function (param) {
       var built;
       if (param.group === 'input') {
         built = buildInputRow(param);
         el.inputs.appendChild(built.row);
-        inputCount += 1;
       } else {
         built = buildComputedRow(param);
         el.computed.appendChild(built.row);
-        computedCount += 1;
       }
       state.rowByKey[param.key] = built;
       wireRowHighlight(built.row, param);
     });
-
-    el.inputCount.textContent = inputCount;
-    el.computedCount.textContent = computedCount;
   }
 
   /* ------------------------------------------------------------------ *

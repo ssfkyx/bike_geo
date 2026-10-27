@@ -67,6 +67,10 @@ derived by `js/geometry.js`:
 - **wheelbase** — the two horizontal projections:
   `√(chainstay² − bbDrop²) + √(frontCenter² − bbDrop²)`.
 - BB height, chainstay horizontal, front-center horizontal, effective top tube
+- **standover height** — ground to top tube, measured at
+  `x = bb.x + 120 mm` (Specialized convention). The top-tube line is the
+  drawing's seat-tube/head-tube junction line:
+  `y = ttSeat.y + (x − ttSeat.x) · (ttHead.y − ttSeat.y) / (ttHead.x − ttSeat.x)`.
 - **trail** and **mechanical trail** from the steering-axis geometry
 - stack / reach ratio (already listed above)
 
@@ -80,6 +84,7 @@ headTubeBottom   = (frontAxle − rake·n) + forkLengthA2C·u
 forkLengthStraight = √(forkLengthA2C² + rake²)
 headTubeTop      = headTubeBottom + headTubeLength·u
 reach / stack    = headTubeTop − bb
+standover        = topTubeY(bb.x + 120) − groundY
 wheelbase        = frontAxle.x
 ```
 
@@ -259,8 +264,8 @@ node tests/templates.test.js
 
 - `tests/geometry.test.js` — reference-bike fixtures, geometric consistency
   (wheelbase, seat tube, steering-axis trail identities), A2C ↔ straight fork
-  conversion, clamping, optional fitting conversions / derived seatpost values /
-  fit points.
+  conversion, standover point/offset, clamping, optional fitting conversions /
+  derived seatpost values / fit points.
 - `tests/render.test.js` — scene parts, view box containment (single + multi
   bike), colour groups, hover highlighting + dimensions, fit overlays, spacer
   bands, head-tube alignment and magnified (unfiltered) stem view, ground

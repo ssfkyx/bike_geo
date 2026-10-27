@@ -442,6 +442,16 @@
     var hta = g.input.headTubeAngle * Math.PI / 180;
 
     switch (key) {
+      case 'standoverHeight': {
+        if (!g.standoverPoint) return [];
+        var standTop = P(g.standoverPoint);
+        var standGround = [standTop[0], groundScreen];
+        return [line(standTop, standGround, 'dim-line')].concat(
+          tag(ctx, [standTop[0] + ctx.fs * 1.2, (standTop[1] + standGround[1]) / 2],
+            'Standover ' + fmt(g.standoverHeight, 1) + ' mm', 'start')
+        );
+      }
+
       case 'spacerHeight': {
         if (!fitting || !fitting.points || !fitting.points.spacerEnd) return [];
         var spacerStart = P(fitting.points.spacerStart);

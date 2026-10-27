@@ -184,7 +184,7 @@ test('string input is accepted (form values are strings)', () => {
 test('every preset solves to finite values', () => {
   for (const preset of Geo.PRESETS) {
     const g = Geo.solve(preset.inputs);
-    for (const key of ['trail', 'forkOffset', 'forkLength', 'frontCenter', 'reach', 'stack', 'wheelbase']) {
+    for (const key of ['trail', 'forkOffset', 'forkLength', 'frontCenter', 'reach', 'stack', 'wheelbase', 'standoverHeight']) {
       assert.ok(Number.isFinite(g[key]), `${preset.id}.${key} is finite`);
     }
     assert.ok(g.trail > 0 && g.trail < 200, `${preset.id} trail is plausible`);
@@ -217,6 +217,21 @@ test('parameter catalogue covers every displayed datum once', () => {
     assert.ok(!inputs.includes(key), `${key} is not an input`);
   }
   assert.ok(!keys.includes('wheelFlop'), 'wheel flop was removed');
+});
+
+test('standover height uses the Specialized 120 mm-forward method', () => {
+  const g = Geo.solve(TARMAC);
+  near(g.standoverOffset, 120, 1e-9, 'measurement offset');
+  near(g.standoverPoint.x, g.bb.x + 120, 1e-9, 'measurement x');
+  const a = g.anchors.ttSeat;
+  const b = g.anchors.ttHead;
+  const t = (g.standoverPoint.x - a.x) / (b.x - a.x);
+  near(g.standoverPoint.y, a.y + (b.y - a.y) * t, 1e-9, 'point lies on the top tube');
+  near(g.standoverHeight, g.standoverPoint.y - g.groundY, 1e-9, 'ground to top tube');
+
+  const wider = Geo.solve(Object.assign({}, TARMAC, { tireWidth: TARMAC.tireWidth + 1 }));
+  near(wider.standoverHeight - g.standoverHeight, 1, 1e-9,
+    '+1 mm tire width raises standover by 1 mm');
 });
 
 /* ------------------------------------------------------------------ *

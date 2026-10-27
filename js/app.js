@@ -34,8 +34,6 @@
     exportBtn: document.getElementById('export-svg'),
     importBtn: document.getElementById('import-url'),
     toast: document.getElementById('toast'),
-    inputCount: document.getElementById('input-count'),
-    computedCount: document.getElementById('computed-count'),
     tabs: document.getElementById('bike-tabs'),
     addBike: document.getElementById('add-bike'),
     viewParams: document.getElementById('view-params'),
@@ -969,26 +967,18 @@
   }
 
   function buildRows() {
-    var inputCount = 0;
-    var computedCount = 0;
-
     Geo.PARAMS.forEach(function (param) {
       var built;
       if (param.group === 'input') {
         built = buildInputRow(param);
         el.inputs.appendChild(built.row);
-        inputCount += 1;
       } else {
         built = buildComputedRow(param);
         el.computed.appendChild(built.row);
-        computedCount += 1;
       }
       state.rowByKey[param.key] = built;
       wireRowHighlight(built.row, param);
     });
-
-    el.inputCount.textContent = inputCount;
-    el.computedCount.textContent = computedCount;
   }
 
   /* ------------------------------------------------------------------ *

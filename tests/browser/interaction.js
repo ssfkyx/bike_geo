@@ -92,15 +92,20 @@ async function main() {
       preset: document.getElementById('preset-select').value,
       frontCenterField: document.getElementById('field-frontCenter').value,
       ett: document.querySelector('.computed-row[data-key="effectiveTopTube"] .value').textContent,
+      standover: document.querySelector('.computed-row[data-key="standoverHeight"] .value').textContent,
+      expectedStandover: window.BikeGeo.solve(window.BikeGeo.DEFAULTS).standoverHeight.toFixed(1),
+      inputHeading: document.getElementById('inputs-list').closest('.group').querySelector('h3').textContent.trim(),
+      resultHeading: document.getElementById('computed-list').closest('.group').querySelector('h3').textContent.trim(),
+      hasInputCount: !!document.getElementById('input-count'),
       computedKeys: Array.from(document.querySelectorAll('.computed-row'))
         .slice(0, 3).map((row) => row.getAttribute('data-key')),
       badge: document.getElementById('stage-badge').textContent,
       legendHidden: document.getElementById('bike-legend').hidden
     };
   })()`);
-  check('initial rows', initial.rows, 33);
+  check('initial rows', initial.rows, 34);
   check('initial inputs', initial.inputs, 11);
-  check('initial computed', initial.computed, 12);
+  check('initial computed', initial.computed, 13);
   check('initial fitting rows', initial.fitRows, 10);
   check('initial fitting inputs', initial.fitInputs, 8);
   check('initial fitting outputs', initial.fitOutputs, 2);
@@ -118,6 +123,9 @@ async function main() {
   check('initial preset', initial.preset, 'tarmac');
   check('initial front center field', initial.frontCenterField, '574.5');
   check('initial effective top tube', initial.ett, '507.0');
+  check('standover height is derived', initial.standover, initial.expectedStandover);
+  check('sections are Data Input / Result', [initial.inputHeading, initial.resultHeading], ['Data Input', 'Result']);
+  check('input count is removed', initial.hasInputCount, false);
   check('reach/stack/ratio lead the computed list', initial.computedKeys, ['reach', 'stack', 'stackReachRatio']);
   check('initial badge', initial.badge, '700C / 29" \u00b7 26 mm \u00b7 OD 674.0 mm');
   check('legend hidden with one bike', initial.legendHidden, true);
@@ -469,7 +477,7 @@ async function main() {
   check('compare tab label', added.compareLabel, 'Compare (2)');
   check('compare tab enabled', added.compareDisabled, false);
   check('legend appears with two bikes', [added.legendHidden, added.legendItems], [false, 2]);
-  check('compare table has every parameter', added.compareRows, 33);
+  check('compare table has every parameter', added.compareRows, 34);
   check('compare stack values and delta', added.stackCells, added.expectedStackCells);
   check('compare tire outer diameter values', added.odCells, ['698.0', '674.0-24.0']);
   check('compare shows fitted data when present', added.hasFittingRows, true);

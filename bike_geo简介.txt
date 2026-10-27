@@ -7,7 +7,7 @@ Bike Geo 是一个参数化自行车几何绘图工具，单个 HTML 文件，�
 使用方式
 
 打开 bike_geo.html，在右侧面板编辑当前选中车的 11 项必要输入，画布会实时重绘；下方
-Compensated 区列出全部自动补全值。顶部 Preset 可载入内置车型，修改任一参数后该车转为
+Result 区列出全部自动计算结果。顶部 Preset 可载入内置车型，修改任一参数后该车转为
 Custom。可将当前车的输入用 Save template 存成命名模板（本机浏览器保存），之后从模板
 下拉框载入；模板栏下方的 Export templates 可把全部模板导出为 JSON，Import templates
 用于在新设备/新浏览器导入恢复。Personal Fitting Area 为可选的把立、坐高/座管、牙盘
@@ -20,8 +20,8 @@ Custom。可将当前车的输入用 Save template 存成命名模板（本机�
 1. 参数化线稿：输入侧为 BSD、胎宽、后下叉长、BB drop、立管长/角、头管长/角、
    前中心、前叉 Rake（Fork offset）与前叉长度（Fork length，A2C，沿舵管方向
    测量、忽略 rake）；Reach、Stack、
-   Wheelbase、有效上管、Trail、机械 Trail、轮胎外径等由几何关系反推。Reach、
-   Stack 与 Stack/Reach 比作为结果列在 Compensated 最前面。这样避免同时输入
+   Wheelbase、有效上管、Trail、机械 Trail、轮胎外径、Standover 等由几何关系反推。
+   Reach、Stack 与 Stack/Reach 比作为结果列在 Result 最前面。这样避免同时输入
    Reach/Stack 与前叉长度/Rake 造成的过约束矛盾。
 
 2. 联动标注：悬停参数行时，画布上对应管件/轮组高亮并绘出该项尺寸线，其余线条淡出，
@@ -71,6 +71,10 @@ Spacer Height 为头管顶端到把立之间的垫圈总高度：在画布上沿
 
 前叉长度按 A2C（沿舵管方向、忽略 rake）输入；程序内部用 √(A2C² + rake²) 计入前轴
 偏移，得到前轴到头管下沿的真实直线距离。因此表格里的 Fork Length (full) 可以直接填入。
+
+Standover Height 按 Specialized 方法：在五通中心前方 120 mm 的垂直线上，量地面到上管的
+垂直距离。不同品牌的 published standover 可能采用别的测量位置，因此本工具结果与部分
+品牌表可能相差数毫米，属于测量定义差异。
 
 轮径计算逻辑
 
