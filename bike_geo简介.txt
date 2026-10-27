@@ -7,13 +7,15 @@ Bike Geo 是一个参数化自行车几何绘图工具，单个 HTML 文件，�
 使用方式
 
 打开 bike_geo.html，在右侧面板编辑当前选中车的 11 项必要输入，画布会实时重绘；下方
-Result 区列出全部自动计算结果。顶部 Preset 可载入内置车型，修改任一参数后该车转为
-Custom。可将当前车的输入用 Save template 存成命名模板（本机浏览器保存），之后从模板
-下拉框载入；模板栏下方的 Export templates 可把全部模板导出为 JSON，Import templates
-用于在新设备/新浏览器导入恢复。Personal Fitting Area 为可选的把立、坐高/座管、牙盘
-数据，留空不参与绘图；填充 Stem 与 Spacer Height 后可用画布右下角的 Stem compare
-进入头管对齐对比模式。需要保存图时使用 Export SVG 导出矢量图。也支持 URL 参数快速打开
-指定视图（如 ?compare=crux,classic、?align=ground 或 ?align=stem），便于分享与复核。
+Result 区列出全部自动计算结果。顶部 Template 是唯一的模板选择器：Built-in templates
+是程序内置的只读车型，My templates 是你保存的模板；Custom 表示当前车已脱离模板。
+修改任一输入后当前车转为 Custom。点 Save template 可把当前车（含 Personal Fitting）
+存成 My templates 用户模板；只有用户模板可用 × 删除。模板栏下方的 Export templates
+只导出用户模板为 JSON，Import templates 用于导入恢复（内置模板不参与导出/导入）。
+Personal Fitting Area 为可选的把立、坐高/座管、牙盘数据，留空不参与绘图；填充 Stem
+与 Spacer Height 后可用画布右下角的 Stem compare 进入头管对齐对比模式。需要保存图时
+使用 Export SVG 导出矢量图。也支持 URL 参数快速打开指定视图（如
+?preset=crux、?compare=crux,classic、?align=ground 或 ?align=stem），便于分享与复核。
 
 主要功能
 
@@ -35,12 +37,15 @@ Custom。可将当前车的输入用 Save template 存成命名模板（本机�
    Stem compare 按钮进入 Stem Comparison Mode：两车按头管顶端对齐，视图放大到头管/
    垫圈/把立区域，便于比较把立与垫圈叠加关系。
 
-5. 模板：点 Save template 给当前车的全部输入起名保存（保存在本机浏览器，不上传），
-   之后从 Templates 下拉框选择即可载入，右侧 × 删除；A/B/C 可分别保存不同模板。
+5. 模板：顶部 Template 选择器把内置模板与用户模板放在一起，分组显示。
+   Built-in templates 只读，载入时保留当前 Personal Fitting；My templates
+   为用户保存的完整快照（车架输入 + Personal Fitting）。点 Save template 给
+   当前车起名保存，选中用户模板后可按 × 删除；内置模板不可删除。
 
-6. 模板导出/导入：Export templates 把全部模板（含个人设定）导出为 JSON 文件；
-   Import templates 在新设备或新浏览器导入合并。同名模板会询问是否覆盖，取消时自动
-   改名保留两份。适合换设备、备份或团队共享设定。
+6. 模板导出/导入：Export templates 只导出 My templates 中的用户模板（含个人
+   设定）为 JSON 文件；Import templates 在新设备或新浏览器导入合并。同名用户
+   模板会询问是否覆盖，取消时自动改名保留两份；与内置模板重名也会自动改名。
+   适合换设备、备份或团队共享设定。
 
 7. 个人设定（Personal Fitting Area，可选）：把立 Length / Angle / Reach / Stack
    四个可输入量双向换算（前两个与后两个等价）；Spacer Height 表示垫圈总高度，

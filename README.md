@@ -20,7 +20,9 @@ Reach / Stack / Wheelbase / Trail 等结果，并在点阵纸风格的画布上�
   Seatpost Over Frame / Insert Length，Crank Length 垂直绘制；留空不影响车架几何
 - **Stem Comparison Mode**：两台车按头管顶端对齐，视角放大到头管/垫圈/把立区域
   （保留整车线条），Spacer Height 以该车颜色淡色带绘制，把立叠加在垫圈上方，便于比较把立设定
-- **自定义模板**：保存在本机浏览器，可整体导出为 JSON / 在新设备导入
+- **统一 Template 选择器**：Built-in templates（内置只读）与 My templates
+  （用户保存的完整快照）共用一个下拉框；载入内置模板保留 Personal Fitting，
+  用户模板可保存 / 删除 / 导出 / 导入，内置模板不参与导出导入
 - **悬停联动标注**：悬停参数行，对应线条高亮并显示尺寸
 - **导出矢量 SVG**：可在 Illustrator / Figma / CAD 中继续编辑
 - **深链**：`?preset=crux&compare=crux,classic&align=ground`

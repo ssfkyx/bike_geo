@@ -24,8 +24,8 @@
 
     <div class="top-actions">
       <label class="preset-field">
-        <span>Preset</span>
-        <select id="preset-select" aria-label="Geometry preset for the selected bike"></select>
+        <span>Template</span>
+        <select id="template-select" aria-label="Template for the selected bike"></select>
       </label>
       <button id="export-svg" class="btn" type="button" title="Download the current drawing as an SVG file">
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0 3-3M8 10 5 7M3 13h10"></path></svg>
@@ -74,12 +74,11 @@
         </button>
       </div>
 
-      <div class="template-bar" aria-label="Templates">
+      <div class="template-bar" aria-label="Template actions">
         <button id="template-save" class="template-btn" type="button"
-                title="Save the selected bike's inputs as a template (stored in this browser)">Save template</button>
-        <select id="template-select" class="template-select" aria-label="Saved templates"></select>
+                title="Save the selected bike as a user template (stored in this browser)">Save template</button>
         <button id="template-delete" class="template-delete" type="button"
-                title="Delete the selected template" aria-label="Delete the selected template" disabled>&#215;</button>
+                title="Built-in templates cannot be deleted" aria-label="Delete the selected user template" disabled>&#215;</button>
       </div>
 
       <div class="template-links">

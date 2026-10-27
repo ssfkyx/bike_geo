@@ -24,9 +24,20 @@
     406: '20"'
   };
 
+  /* Built-in templates are read-only; user templates live in localStorage. */
+  var BUILTIN_TEMPLATES = Geo.PRESETS.map(function (preset) {
+    return {
+      id: 'builtin:' + preset.id,
+      legacyId: preset.id,
+      name: preset.label,
+      source: 'builtin',
+      inputs: preset.inputs,
+      fitting: null
+    };
+  });
+
   var el = {
     svg: document.getElementById('drawing'),
-    preset: document.getElementById('preset-select'),
     inputs: document.getElementById('inputs-list'),
     computed: document.getElementById('computed-list'),
     badge: document.getElementById('stage-badge'),
@@ -56,7 +67,7 @@
   };
 
   var state = {
-    bikes: [createBike(presetById('tarmac') || Geo.PRESETS[0])],
+    bikes: [createBike(builtinByLegacyId('tarmac') || BUILTIN_TEMPLATES[0])],
     selected: 0,
     activeKey: null,
     view: 'params',
@@ -75,18 +86,42 @@
   /* ------------------------------------------------------------------ *
    * Small helpers
    * ------------------------------------------------------------------ */
-  function presetById(id) {
-    for (var i = 0; i < Geo.PRESETS.length; i++) {
-      if (Geo.PRESETS[i].id === id) return Geo.PRESETS[i];
+  function builtinByLegacyId(id) {
+    for (var i = 0; i < BUILTIN_TEMPLATES.length; i++) {
+      if (BUILTIN_TEMPLATES[i].legacyId === id) return BUILTIN_TEMPLATES[i];
     }
     return null;
   }
 
-  function createBike(preset) {
+  function templateById(id) {
+    if (!id) return null;
+    for (var i = 0; i < BUILTIN_TEMPLATES.length; i++) {
+      if (BUILTIN_TEMPLATES[i].id === id) return BUILTIN_TEMPLATES[i];
+    }
+    if (isUserTemplateId(id)) {
+      var name = id.slice('user:'.length);
+      for (var j = 0; j < templates.length; j++) {
+        if (templates[j].name === name) {
+          return Object.assign({ id: id, source: 'user' }, templates[j]);
+        }
+      }
+    }
+    return null;
+  }
+
+  function isUserTemplateId(id) {
+    return typeof id === 'string' && id.indexOf('user:') === 0;
+  }
+
+  function userTemplateId(name) {
+    return 'user:' + name;
+  }
+
+  function createBike(template) {
     return {
-      inputs: Object.assign({}, preset.inputs),
-      presetId: preset.id,
-      fitting: emptyFitting()
+      inputs: Object.assign({}, template.inputs),
+      fitting: template.source === 'user' ? cloneFitting(template.fitting) : emptyFitting(),
+      templateId: template.id
     };
   }
 
@@ -110,9 +145,13 @@
     return LETTERS[index] || '?';
   }
 
+  function templateDisplayName(id) {
+    var template = templateById(id);
+    return template ? template.name : 'Custom geometry';
+  }
+
   function bikeTitle(bike, index) {
-    var preset = presetById(bike.presetId);
-    return 'Bike ' + letter(index) + ' \u2014 ' + (preset ? preset.label : 'Custom geometry');
+    return 'Bike ' + letter(index) + ' \u2014 ' + templateDisplayName(bike.templateId);
   }
 
   function wheelLabel(bsd) {
@@ -322,11 +361,10 @@
     }
     el.legend.hidden = false;
     el.legend.innerHTML = state.bikes.map(function (bike, index) {
-      var preset = presetById(bike.presetId);
       return '<span class="legend-item bike-' + index + '">' +
         '<span class="bike-dot" aria-hidden="true"></span>' +
         '<strong>' + letter(index) + '</strong>' +
-        '<span class="legend-name">' + esc(preset ? preset.label : 'Custom geometry') + '</span>' +
+        '<span class="legend-name">' + esc(templateDisplayName(bike.templateId)) + '</span>' +
         '</span>';
     }).join('');
   }
@@ -408,9 +446,23 @@
     el.compareTable.innerHTML = html;
   }
 
-  function syncPresetSelect() {
+  function syncTemplatePicker() {
     var bike = currentBike();
-    el.preset.value = bike.presetId || 'custom';
+    var value = bike.templateId || 'custom';
+    if (value !== 'custom' && !templateById(value)) {
+      bike.templateId = null;
+      value = 'custom';
+    }
+    el.templateSelect.value = value;
+    if (el.templateSelect.value !== value) {
+      bike.templateId = null;
+      el.templateSelect.value = 'custom';
+    }
+    var userTemplate = isUserTemplateId(bike.templateId);
+    el.templateDelete.disabled = !userTemplate;
+    el.templateDelete.title = userTemplate
+      ? 'Delete this user template'
+      : 'Built-in templates cannot be deleted';
   }
 
   function syncInputFields() {
@@ -434,7 +486,7 @@
     updateTabs();
     updateLegend();
     updateCompareTable();
-    syncPresetSelect();
+    syncTemplatePicker();
     syncFittingInputs();
     updateRowStates();
     updateAlignButtons();
@@ -458,7 +510,7 @@
   }
 
   /* ------------------------------------------------------------------ *
-   * Templates: named copies of one bike's inputs, stored in this browser
+   * Templates: built-in read-only templates + user-saved templates
    * ------------------------------------------------------------------ */
   function readTemplates() {
     try {
@@ -491,9 +543,10 @@
     return {
       name: template.name,
       inputs: inputs,
-      presetId: template.presetId || null,
       fitting: cloneFitting(template.fitting),
-      forkLengthMode: mode
+      forkLengthMode: mode,
+      basedOn: template.basedOn || template.presetId || null,
+      source: 'user'
     };
   }
 
@@ -506,27 +559,38 @@
     }
   }
 
-  function rebuildTemplateSelect(selectedName) {
-    var options = ['<option value="">Templates\u2026</option>'];
-    templates.forEach(function (template) {
-      options.push('<option value="' + esc(template.name) + '">' + esc(template.name) + '</option>');
+  function rebuildTemplateSelect() {
+    var options = ['<option value="custom">Custom</option>'];
+    options.push('<optgroup label="Built-in templates">');
+    BUILTIN_TEMPLATES.forEach(function (template) {
+      options.push('<option value="' + esc(template.id) + '">' +
+        esc(template.name) + '</option>');
     });
+    options.push('</optgroup>');
+    options.push('<optgroup label="My templates">');
+    if (templates.length) {
+      templates.forEach(function (template) {
+        var id = userTemplateId(template.name);
+        options.push('<option value="' + esc(id) + '">' +
+          esc(template.name) + '</option>');
+      });
+    } else {
+      options.push('<option value="" disabled>No saved templates yet</option>');
+    }
+    options.push('</optgroup>');
     el.templateSelect.innerHTML = options.join('');
-    var keep = selectedName && templates.some(function (template) {
-      return template.name === selectedName;
-    });
-    el.templateSelect.value = keep ? selectedName : '';
-    el.templateDelete.disabled = !el.templateSelect.value;
+    syncTemplatePicker();
   }
 
   function resetTemplateSelection() {
-    el.templateSelect.value = '';
-    el.templateDelete.disabled = true;
+    syncTemplatePicker();
   }
 
   function suggestTemplateName() {
-    var preset = presetById(currentBike().presetId);
-    return preset ? preset.label : 'Bike ' + letter(state.selected);
+    var template = templateById(currentBike().templateId);
+    if (template && template.source === 'user') return template.name;
+    if (template && template.source === 'builtin') return template.name + ' copy';
+    return 'Bike ' + letter(state.selected) + ' template';
   }
 
   function saveTemplate() {
@@ -537,6 +601,13 @@
       toast('Template name is required');
       return;
     }
+    for (var b = 0; b < BUILTIN_TEMPLATES.length; b++) {
+      if (BUILTIN_TEMPLATES[b].name === name) {
+        toast('This name is reserved for a built-in template');
+        return;
+      }
+    }
+
     var existing = -1;
     templates.forEach(function (template, index) {
       if (template.name === name) existing = index;
@@ -546,64 +617,69 @@
     var record = {
       name: name,
       inputs: Object.assign({}, currentBike().inputs),
-      presetId: currentBike().presetId,
       fitting: cloneFitting(currentBike().fitting),
-      forkLengthMode: 'a2c'
+      forkLengthMode: 'a2c',
+      basedOn: currentBike().templateId,
+      source: 'user'
     };
     if (existing >= 0) templates[existing] = record;
     else templates.push(record);
 
     var persisted = storeTemplates();
-    rebuildTemplateSelect(name);
+    currentBike().templateId = userTemplateId(name);
+    rebuildTemplateSelect();
+    apply();
     toast(persisted ? 'Template "' + name + '" saved' : 'Template saved for this session only');
   }
 
-  function loadTemplate(name) {
-    var record = null;
-    templates.forEach(function (template) {
-      if (template.name === name) record = template;
-    });
-    if (!record) {
-      resetTemplateSelection();
+  function loadTemplate(id) {
+    if (!id || id === 'custom') {
+      currentBike().templateId = null;
+      apply();
+      toast('Template detached \u2014 Custom');
       return;
     }
-    record = normalizeTemplate(record);
+    var template = templateById(id);
+    if (!template) {
+      syncTemplatePicker();
+      return;
+    }
 
     var bike = currentBike();
-    bike.inputs = {};
-    Object.keys(Geo.DEFAULTS).forEach(function (key) {
-      var value = parseFloat(record.inputs[key]);
-      bike.inputs[key] = isFinite(value) ? value : Geo.DEFAULTS[key];
-    });
-    bike.presetId = presetById(record.presetId) ? record.presetId : null;
-    bike.fitting = cloneFitting(record.fitting);
+    var keptFitting = cloneFitting(bike.fitting);
+    bike.inputs = Object.assign({}, template.inputs);
+    bike.fitting = template.source === 'builtin'
+      ? keptFitting
+      : cloneFitting(template.fitting);
+    bike.templateId = template.id;
 
     syncInputFields();
     syncFittingInputs();
     apply();
-    el.templateSelect.value = name;
-    el.templateDelete.disabled = false;
-    toast('Template "' + name + '" loaded');
+    toast('Loaded template "' + template.name + '"');
   }
 
   function deleteTemplate() {
-    var name = el.templateSelect.value;
-    if (!name) return;
+    var id = el.templateSelect.value;
+    if (!isUserTemplateId(id)) return;
+    var name = id.slice('user:'.length);
     if (!window.confirm('Delete template "' + name + '"?')) return;
     templates = templates.filter(function (template) { return template.name !== name; });
     storeTemplates();
+    if (currentBike().templateId === id) currentBike().templateId = null;
     rebuildTemplateSelect();
+    apply();
     toast('Template deleted');
   }
 
   function exportTemplates() {
     if (!templates.length) {
-      toast('No templates to export');
+      toast('No user templates to export');
       return;
     }
     download(window.BikeGeoTemplates.exportFileName(),
       window.BikeGeoTemplates.exportText(templates), 'application/json');
-    toast('Exported ' + templates.length + ' template(s)');
+    toast('Exported ' + templates.length + ' user template(s)');
   }
 
   function importTemplatesFromText(text) {
@@ -615,7 +691,8 @@
       return;
     }
 
-    var names = templates.map(function (template) { return template.name; });
+    var names = BUILTIN_TEMPLATES.map(function (template) { return template.name; })
+      .concat(templates.map(function (template) { return template.name; }));
     var added = 0;
     var overwritten = 0;
     var renamed = 0;
@@ -626,28 +703,36 @@
       templates.forEach(function (template, index) {
         if (template.name === incoming.name) existing = index;
       });
-      if (existing < 0) {
+      if (existing >= 0) {
+        var overwrite = window.confirm('Template "' + incoming.name +
+          '" already exists. Overwrite? (Cancel keeps both)');
+        if (overwrite) {
+          templates[existing] = incoming;
+          overwritten += 1;
+          return;
+        }
+        var uniqueExisting = window.BikeGeoTemplates.uniqueName(incoming.name, names);
+        incoming.name = uniqueExisting;
         templates.push(incoming);
-        names.push(incoming.name);
-        added += 1;
+        names.push(uniqueExisting);
+        renamed += 1;
         return;
       }
-      var overwrite = window.confirm('Template "' + incoming.name +
-        '" already exists. Overwrite? (Cancel keeps both)');
-      if (overwrite) {
-        templates[existing] = incoming;
-        overwritten += 1;
-      } else {
+      if (names.indexOf(incoming.name) >= 0) {
         var unique = window.BikeGeoTemplates.uniqueName(incoming.name, names);
         incoming.name = unique;
-        templates.push(incoming);
         names.push(unique);
         renamed += 1;
+      } else {
+        names.push(incoming.name);
       }
+      templates.push(incoming);
+      added += 1;
     });
 
     var persisted = storeTemplates();
     rebuildTemplateSelect();
+    apply();
     var details = [];
     if (added) details.push(added + ' new');
     if (overwritten) details.push(overwritten + ' replaced');
@@ -685,18 +770,18 @@
   function addBike() {
     if (state.bikes.length >= MAX_BIKES) return;
 
-    var usedPresets = state.bikes.map(function (bike) { return bike.presetId; });
-    var preset = Geo.PRESETS.filter(function (candidate) {
-      return usedPresets.indexOf(candidate.id) === -1;
+    var usedBuiltins = state.bikes.map(function (bike) { return bike.templateId; });
+    var template = BUILTIN_TEMPLATES.filter(function (candidate) {
+      return usedBuiltins.indexOf(candidate.id) === -1;
     })[0];
 
-    if (preset) {
-      state.bikes.push(createBike(preset));
+    if (template) {
+      state.bikes.push(createBike(template));
     } else {
       state.bikes.push({
         inputs: Object.assign({}, currentBike().inputs),
-        presetId: null,
-        fitting: cloneFitting(currentBike().fitting)
+        fitting: cloneFitting(currentBike().fitting),
+        templateId: null
       });
     }
 
@@ -706,8 +791,7 @@
     syncInputFields();
     syncFittingInputs();
     apply();
-    resetTemplateSelection();
-    toast('Added Bike ' + letter(state.selected) + (preset ? ' \u00b7 ' + preset.label : ' (copy)'));
+    toast('Added Bike ' + letter(state.selected) + (template ? ' \u00b7 ' + template.name : ' (copy)'));
   }
 
   function removeBike(index) {
@@ -730,22 +814,6 @@
   /* ------------------------------------------------------------------ *
    * Panel construction
    * ------------------------------------------------------------------ */
-  function buildPresetSelect() {
-    var fragment = document.createDocumentFragment();
-    Geo.PRESETS.forEach(function (preset) {
-      var option = document.createElement('option');
-      option.value = preset.id;
-      option.textContent = preset.label;
-      fragment.appendChild(option);
-    });
-    var custom = document.createElement('option');
-    custom.value = 'custom';
-    custom.textContent = 'Custom';
-    fragment.appendChild(custom);
-
-    el.preset.appendChild(fragment);
-  }
-
   function buildInputRow(param) {
     var row = document.createElement('div');
     row.className = 'row input-row';
@@ -790,7 +858,7 @@
       row.classList.remove('is-invalid');
       var bike = currentBike();
       bike.inputs[param.key] = raw;
-      bike.presetId = null;
+      bike.templateId = null;
       apply();
     });
 
@@ -1004,17 +1072,6 @@
   }
 
   function wireEvents() {
-    el.preset.addEventListener('change', function () {
-      var preset = presetById(el.preset.value);
-      if (!preset) return;
-      var bike = currentBike();
-      bike.inputs = Object.assign({}, preset.inputs);
-      bike.presetId = preset.id;
-      syncInputFields();
-      apply();
-      resetTemplateSelection();
-    });
-
     el.exportBtn.addEventListener('click', exportSvg);
 
     el.importBtn.addEventListener('click', function () {
@@ -1045,11 +1102,7 @@
 
     el.templateSave.addEventListener('click', saveTemplate);
     el.templateSelect.addEventListener('change', function () {
-      if (el.templateSelect.value) {
-        loadTemplate(el.templateSelect.value);
-      } else {
-        el.templateDelete.disabled = true;
-      }
+      loadTemplate(el.templateSelect.value);
     });
     el.templateDelete.addEventListener('click', deleteTemplate);
     el.templateExport.addEventListener('click', exportTemplates);
@@ -1096,7 +1149,7 @@
   function applyUrlState() {
     var params = new URLSearchParams(window.location.search);
 
-    var preset = presetById(params.get('preset'));
+    var preset = builtinByLegacyId(params.get('preset'));
     if (preset) {
       state.bikes[0] = createBike(preset);
       state.selected = 0;
@@ -1106,9 +1159,9 @@
     var compare = params.get('compare');
     if (compare) {
       compare.split(',').forEach(function (id) {
-        var candidate = presetById(id.trim());
+        var candidate = builtinByLegacyId(id.trim());
         if (!candidate || state.bikes.length >= MAX_BIKES) return;
-        var already = state.bikes.some(function (bike) { return bike.presetId === candidate.id; });
+        var already = state.bikes.some(function (bike) { return bike.templateId === candidate.id; });
         if (!already) state.bikes.push(createBike(candidate));
       });
       if (state.bikes.length > 1) {
@@ -1139,7 +1192,6 @@
   }
 
   function init() {
-    buildPresetSelect();
     buildRows();
     buildFittingRows();
     rebuildTemplateSelect();

@@ -25,8 +25,8 @@ Bike Geo 是一个打开即用的单页网页工具。
   · 鼠标悬停任一参数，画布上对应线条高亮并显示尺寸标注
   · 最多 3 台车彩色叠画对比（轮胎按车色淡染）+ 完整的数值差表
   · 可切换"后轴对齐 / 地面线对齐"两种叠画基线
-  · 输入可存成命名模板（保存在本机浏览器），随时载入 / 删除
-  · 模板可导出为 JSON / 导入，换设备、换浏览器、重开也能恢复
+  · 内置模板与用户模板共用一个 Template 选择器；用户模板保存在本机浏览器，随时载入 / 删除
+  · 用户模板可导出为 JSON / 导入，换设备、换浏览器、重开也能恢复
   · Personal Fitting Area：可选记录把立、坐高/座管、牙盘数据并叠加绘制
   · Stem Comparison Mode：按头管顶端对齐两车，放大比较垫圈与把立
   · 可导出矢量 SVG（含各车颜色与点阵纸），可进 Illustrator / Figma / CAD
@@ -57,14 +57,18 @@ Windows / macOS：
 2) 右侧面板：
    · A / B / C 标签：最多 3 台车。点击标签切换"当前编辑的车"；
      "×"删除该车（至少保留 1 台）；"＋ Add bike"添加一台
-     （自动使用下一个未用预设；满 3 台后按钮变灰）。
-   · Save template / 模板下拉框：点 "Save template" 把当前选中车的全部
-     输入（含个人设定）存成命名模板（保存在本机浏览器 localStorage，不上传）；
-     之后从 "Templates…" 下拉框选择即可载入，右侧 "×" 删除选中的模板。
-     切换 A/B/C 或载入 Preset 时，模板选择会自动重置。
-   · Export templates / Import templates：把全部模板导出为一个 JSON 文件，
-     或在新设备 / 新浏览器中导入。同名模板会询问"是否覆盖"，选择取消则
-     自动改名（如 "xxx (2)"）保留两份。
+     （自动使用下一个未用的内置模板；满 3 台后按钮变灰）。
+   · 顶部 Template：唯一的模板选择器，分组为 Built-in templates（内置，
+     只读）和 My templates（用户保存）。Custom 表示当前车已脱离模板。
+     载入内置模板只替换 11 项车架输入，保留 Personal Fitting；载入
+     My templates 会同时恢复车架输入与 Personal Fitting。
+   · Save template / ×：点 "Save template" 把当前选中车的全部输入
+     （含个人设定）存成用户模板（本机 localStorage，不上传）；只有
+     选中 My templates 时 × 才可删除，内置模板不可覆盖/删除。
+     修改任意输入后当前车回到 Custom，需要时可以另存为新模板。
+   · Export templates / Import templates：只导出 / 导入用户模板
+     （不含内置模板），格式为 JSON；同名模板会询问"是否覆盖"，选择取消则
+     自动改名（如 "xxx (2)"）保留两份；与内置模板重名会自动改名。
    · Parameters：当前选中车的 11 个必要输入，可直接修改；
      下方 Data Input 是必要输入区，Result 是自动计算出的参数（灰色，
      不可编辑）；
@@ -72,8 +76,6 @@ Windows / macOS：
    · Compare：有 2 台以上车时可用；列出全部参数在 A/B/C 上的数值，
      并显示 B、C 相对 A 车的差值。任一台车填写了个人设定时，表格末尾
      会出现 "Personal fitting" 分组，未填写的车显示 "—"。
-   · 顶部 Preset：预设车型，只作用于当前选中的车；修改任意输入后
-     该车会变为 "Custom"。
    · 顶部 Export SVG：把当前画布导出为矢量 SVG 文件。
    · 画布右上角状态条：显示当前车的轮径 / 胎宽 / 轮胎外径。
 
@@ -201,7 +203,7 @@ Crankset（牙盘）：
   · 参数面板中 "Tire outer diameter" 一行显示 674.0；
   · 鼠标悬停这一行，会在前轮上画出直径尺寸线 Ø 674.0 mm；
   · 把 Tire width 从 26 改成 27：外径变为 676.0，外半径变为 338.0；
-  · 预设选 "650B gravel (47 mm)"，可直接看到 OD 678.0 mm。
+  · 内置模板选 "650B gravel (47 mm)"，可直接看到 OD 678.0 mm。
 
 关于质疑（如实说明）：
   · 上述是"名义计算"。真实轮胎装车后的外径还会受轮圈内宽、胎压、
@@ -217,19 +219,20 @@ Crankset（牙盘）：
     公式换算后再填入。
 
 
-八、预设车型
+八、内置模板
 --------------------------------------------------------------------
   · Tarmac SL7 Comp '23 (49)
   · CruX Expert '25 (49)
   · Classic road (56)
   · 650B gravel (47 mm)     ← 用于验证 650B × 47 = OD 678
 
-预设只是把一组参数填入当前选中的车，之后仍然可以随意修改。
+内置模板只是把一组参数填入当前选中的车，之后仍然可以随意修改；
+修改后可另存为 My templates，不会覆盖内置模板。
 
 
 九、对比模式（2 ~ 3 台车）
 --------------------------------------------------------------------
-  · 点击 "＋ Add bike" 增加一台：自动使用下一个未用预设，并自动切到
+  · 点击 "＋ Add bike" 增加一台：自动使用下一个未用的内置模板，并自动切到
     Compare 视图；
   · 三台车按后轴对齐叠画：A = 黑色、B = 淡蓝、C = 活力橙，
     画布左上角会显示颜色图例；
@@ -257,10 +260,11 @@ Export SVG：
   可用 Illustrator / Inkscape / Figma / CAD 打开并继续编辑。
 
 Export templates / Import templates：
-  模板栏下方的两个文字按钮。Export templates 会把当前浏览器里的全部
-  模板（含个人设定字段）导出为 bikegeo-templates-日期.json；
-  Import templates 读取该 JSON 并合并到当前浏览器，同名模板会询问是否
-  覆盖，取消则自动改名保留两份。适合换设备、换浏览器或备份。
+  模板栏下方的两个文字按钮。Export templates 只导出 My templates 中的
+  用户模板（含个人设定字段），不包含内置模板；文件名形如
+  bikegeo-templates-日期.json。Import templates 读取该 JSON 并合并到
+  当前浏览器，同名模板会询问是否覆盖，取消则自动改名保留两份。适合
+  换设备、换浏览器或备份。
 
 深链（在 index.html 后面追加参数）示例：
 
@@ -270,7 +274,7 @@ Export templates / Import templates：
     index.html?compare=crux,classic&align=ground
     index.html?compare=crux,classic&align=stem
 
-  · preset  指定 A 车预设
+  · preset  为 A 车选择内置模板（为兼容旧链接保留的参数名）
   · compare 追加对比车（逗号分隔，可多个，最多 3 台）
   · view    params 或 compare，打开时显示的视图
   · param   打开时预先高亮的参数（车架参数或个人设定键名均可，
@@ -327,15 +331,24 @@ Export templates / Import templates：
 
 问：能保存我调好的车吗？
 答：可以。点 "Save template" 给当前车的全部输入（含 Personal Fitting）
-    起个名字保存，之后从 "Templates…" 下拉框选择即可载入；选中的模板
-    可按右侧 × 删除。也可以随时用 Export SVG 保存当前画布。
+    起个名字，存成 My templates 里的用户模板；之后在顶部唯一的
+    Template 选择器里选它即可载入。选中的用户模板可按 × 删除。
+    内置模板是只读的，不会被覆盖。也可以随时用 Export SVG 保存当前画布。
+
+问：Template 选择器里的内置模板和我的模板有什么区别？
+答：两者共用一个选择器和一套数据格式，但内置模板（Built-in templates）
+    由程序提供、只读，载入时只换车架输入并保留你当前的 Personal
+    Fitting；我的模板（My templates）由你保存，载入时会同时恢复车架输入
+    和个人设定。修改输入后当前车变为 Custom；内置模板不可删除，用户模板
+    可用 × 删除。导出 / 导入只针对用户模板。
 
 问：保存的模板存在哪里？会丢吗？换设备怎么办？
-答：模板保存在本机浏览器的 localStorage 中（不会上传、不在文件里）。
-    换浏览器 / 换电脑 / 清除浏览器数据后会丢失。用模板栏下方的
-    "Export templates" 把全部模板导出成 JSON 文件，在新设备上点
-    "Import templates" 导入即可恢复（同名模板会询问是否覆盖）。
-    若浏览器禁用了本地存储，模板仅在本次会话有效，但导出仍可用。
+答：用户模板保存在本机浏览器的 localStorage 中（不会上传、不在文件里），
+    内置模板随程序提供、不占 localStorage。换浏览器 / 换电脑 / 清除浏览器
+    数据后用户模板会丢失。用模板栏下方的 "Export templates" 把用户模板
+    导出成 JSON 文件，在新设备上点 "Import templates" 导入即可恢复
+    （同名模板会询问是否覆盖）。若浏览器禁用了本地存储，用户模板仅在
+    本次会话有效，但导出仍可用。
 
 问：Personal Fitting Area 的数值会改变车架几何吗？
 答：不会。把立、坐高/座管、牙盘都是可选的骑乘设定，只叠加绘制在
@@ -347,7 +360,7 @@ Export templates / Import templates：
 --------------------------------------------------------------------
   · 本文件夹只包含程序本身（HTML / CSS / JS）、测试、截图和说明文档；
   · 不含作者姓名、账号、邮箱、本机路径、浏览器记录等个人信息；
-  · 模板只保存在使用者本机浏览器的 localStorage 中，不在分享文件内；
+  · 用户模板只保存在使用者本机浏览器的 localStorage 中，不在分享文件内；
   · 导出模板得到的 JSON 只含模板名称、几何输入与个人设定数值，
     不含设备信息、账号、浏览器路径；分享该文件前请确认是否愿意
     公开自己的把立/坐高等 fitting 数据；

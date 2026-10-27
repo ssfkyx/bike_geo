@@ -148,9 +148,9 @@ back into reach / stack / wheelbase.
   bike's dimension or value tag: wheelbase, chainstay, BB drop, seat tube,
   head/seat tube angles, head tube, reach/stack, trail, mechanical trail, rake,
   effective top tube, … Everything else fades so the compared lines stand out.
-- **Compare** — up to 3 bikes. `+ Add bike` appends the next unused preset (or a
-  copy), the new bike is drawn over the others in its own colour, and the
-  **Compare** view lists every parameter for A/B/C with the delta versus
+- **Compare** — up to 3 bikes. `+ Add bike` appends the next unused built-in
+  template (or a copy), the new bike is drawn over the others in its own colour,
+  and the **Compare** view lists every parameter for A/B/C with the delta versus
   Bike A. Tabs switch which bike the Parameters view edits; `×` removes a bike.
 - **On the ground** — the button at the bottom-right of the canvas switches the
   overlay baseline: rear axle (default, best for comparing frame geometry) or
@@ -166,24 +166,33 @@ back into reach / stack / wheelbase.
   readable, and draws a dotted `stem-guide` through the aligned head-tube tops.
   Spacer stacks are thick low-opacity bands (`fit-spacer`) and the stem starts
   at the top of the spacer. Hovering `spacerHeight` draws its dimension tag.
-- **Templates** — `Save template` stores the selected bike's inputs (including
-  fitting fields) under a name in `localStorage` (key `bikegeo.templates.v1`);
-  the Templates dropdown loads one into the selected bike and `×` deletes it.
+- **Templates** — one Template picker (top bar) merges two sources:
+  - **Built-in templates** (`builtin:<preset-id>`, read-only): generated from
+    `Geo.PRESETS`; loading one replaces the 11 frame inputs and preserves the
+    bike's current Personal Fitting. Delete is disabled and their names are
+    reserved.
+  - **User templates** (`user:<name>`, stored in `localStorage` key
+    `bikegeo.templates.v1`): full snapshots of frame inputs + Personal Fitting;
+    `Save template` creates/overwrites one, `×` deletes it.
+  Each bike stores `templateId` (or `null` for Custom). Editing an input clears
+  the link (Custom). `Custom` in the picker detaches without changing values.
   Falls back to session-only memory if storage is unavailable. Templates never
   leave the browser by themselves.
-- **Template export / import** — `Export templates` downloads every saved
-  template as `bikegeo-templates-YYYYMMDD.json`; `Import templates` reads such
-  a file through a hidden file input and merges it. A name conflict asks via
-  `confirm()`: OK overwrites, Cancel keeps both by adding `(2)`, `(3)`, ….
-  The pure format helpers live in `js/templates.js` (schema version 1).
+- **Template export / import** — `Export templates` downloads only the user
+  templates (built-ins are shipped with the app) as
+  `bikegeo-templates-YYYYMMDD.json`; `Import templates` reads such a file through
+  a hidden file input and merges it. A name conflict asks via `confirm()`: OK
+  overwrites, Cancel keeps both by adding `(2)`, `(3)`, …. Imports colliding with
+  a built-in name are renamed automatically. The pure format helpers live in
+  `js/templates.js` (schema version 1).
 - **Personal Fitting Area** — optional stem (Length/Angle ⇄ Reach/Stack),
   Spacer height, Saddle height + Seatpost length (with derived over-frame /
   insert length) and Crank length. Hovering a fitting row highlights its overlay
   on every bike; filling values adds them to templates, the compare table and
   the drawing. They never change frame geometry.
-- **Presets** — Tarmac SL7 Comp '23 (49), CruX Expert '25 (49), Classic road (56),
-  650B gravel (47 mm). The preset dropdown applies to the selected bike;
-  editing switches it to "Custom".
+- **Built-in templates** — Tarmac SL7 Comp '23 (49), CruX Expert '25 (49),
+  Classic road (56), 650B gravel (47 mm). They live in the same Template picker
+  as user templates but are read-only; editing switches the bike to "Custom".
 - **Deep links** — `?preset=crux`, `?compare=crux,classic`, `?param=stack`,
   `?param=spacerHeight`, `?view=params|compare`, `?align=ground|stem` (handy for
   sharing a view and for visual QA).
@@ -198,7 +207,8 @@ back into reach / stack / wheelbase.
 ## Portable templates
 
 Templates are local by default; `js/templates.js` is a DOM-free, unit-tested
-module that turns them into a portable document:
+module that turns **user templates** into a portable document (built-in
+templates are not exported):
 
 ```json
 {
@@ -277,7 +287,7 @@ node tests/templates.test.js
 
 Optional end-to-end interaction test (drives the real page through the Chrome
 DevTools Protocol: edit → recompute → redraw, hover → highlight, clamping,
-preset switching, add/select/remove bikes, comparison table deltas, fitting
+built-in/user template switching, add/select/remove bikes, comparison table deltas, fitting
 pair conversion, template save/export/import round-trip). Needs Chrome or Edge
 installed:
 

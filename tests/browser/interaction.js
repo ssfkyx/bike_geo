@@ -89,7 +89,14 @@ async function main() {
       addDisabled: document.getElementById('add-bike').disabled,
       compareDisabled: document.getElementById('view-compare').disabled,
       stemCompareDisabled: document.getElementById('stem-compare').disabled,
-      preset: document.getElementById('preset-select').value,
+      templateValue: document.getElementById('template-select').value,
+      templateLabel: document.querySelector('.preset-field span').textContent.trim(),
+      templateOptions: Array.from(document.getElementById('template-select').options)
+        .filter((o) => !o.disabled).map((o) => o.value),
+      templateGroups: Array.from(document.querySelectorAll('#template-select optgroup'))
+        .map((g) => g.label),
+      templateDeleteDisabled: document.getElementById('template-delete').disabled,
+      hasPresetSelect: !!document.getElementById('preset-select'),
       frontCenterField: document.getElementById('field-frontCenter').value,
       ett: document.querySelector('.computed-row[data-key="effectiveTopTube"] .value').textContent,
       standover: document.querySelector('.computed-row[data-key="standoverHeight"] .value').textContent,
@@ -120,7 +127,13 @@ async function main() {
   check('initial bike tab', initial.tabs, 1);
   check('add bike enabled', initial.addDisabled, false);
   check('compare disabled with one bike', initial.compareDisabled, true);
-  check('initial preset', initial.preset, 'tarmac');
+  check('initial template', initial.templateValue, 'builtin:tarmac');
+  check('template control is labelled Template', initial.templateLabel, 'Template');
+  check('one picker holds built-ins and user templates', initial.templateOptions,
+    ['custom', 'builtin:tarmac', 'builtin:crux', 'builtin:classic', 'builtin:gravel650']);
+  check('template picker groups', initial.templateGroups, ['Built-in templates', 'My templates']);
+  check('built-in template cannot be deleted', initial.templateDeleteDisabled, true);
+  check('old preset selector is gone', initial.hasPresetSelect, false);
   check('initial front center field', initial.frontCenterField, '574.5');
   check('initial effective top tube', initial.ett, '507.0');
   check('standover height is derived', initial.standover, initial.expectedStandover);
@@ -237,10 +250,14 @@ async function main() {
     const select = document.getElementById('template-select');
     const del = document.getElementById('template-delete');
     const exportBtn = document.getElementById('template-export');
+    const optionValues = function () {
+      return Array.from(select.options).filter(function (o) { return !o.disabled; })
+        .map(function (o) { return o.value; });
+    };
 
     save.click();
     const saved = {
-      options: Array.from(select.options).map((o) => o.value),
+      options: optionValues(),
       value: select.value,
       deleteDisabled: del.disabled,
       stored: (function () {
@@ -268,25 +285,33 @@ async function main() {
     HTMLAnchorElement.prototype.click = origClick;
     var exportedDoc = JSON.parse(exportText);
 
-    // Change values, then load the saved template.
+    // Editing an input detaches the loaded template and disables Delete.
     var fc = document.getElementById('field-frontCenter');
     fc.value = '600';
     fc.dispatchEvent(new Event('input', { bubbles: true }));
+    var afterEdit = {
+      value: select.value,
+      deleteDisabled: del.disabled
+    };
+
+    // Change fitting too, then load the saved template: both are restored.
     var saddle = document.getElementById('fit-saddleHeight');
     saddle.value = '650';
     saddle.dispatchEvent(new Event('input', { bubbles: true }));
-    select.value = 'Test Template';
+    select.value = 'user:Test Template';
     select.dispatchEvent(new Event('change', { bubbles: true }));
     var loaded = {
       frontCenter: document.getElementById('field-frontCenter').value,
       saddleHeight: document.getElementById('fit-saddleHeight').value,
       over: document.querySelector('.fit-row[data-key="seatpostOverFrame"] output').textContent,
-      insert: document.querySelector('.fit-row[data-key="seatpostInsertLength"] output').textContent
+      insert: document.querySelector('.fit-row[data-key="seatpostInsertLength"] output').textContent,
+      value: select.value
     };
 
     del.click();
     var deleted = {
-      options: Array.from(select.options).map((o) => o.value),
+      options: optionValues(),
+      value: select.value,
       deleteDisabled: del.disabled
     };
 
@@ -297,10 +322,8 @@ async function main() {
     fileInput.files = dt.files;
     fileInput.dispatchEvent(new Event('change', { bubbles: true }));
     await new Promise(function (resolve) { setTimeout(resolve, 250); });
-    var imported = {
-      options: Array.from(select.options).map((o) => o.value)
-    };
-    select.value = 'Test Template';
+    var imported = { options: optionValues() };
+    select.value = 'user:Test Template';
     select.dispatchEvent(new Event('change', { bubbles: true }));
     var importedLoaded = {
       saddleHeight: document.getElementById('fit-saddleHeight').value,
@@ -308,10 +331,11 @@ async function main() {
       insert: document.querySelector('.fit-row[data-key="seatpostInsertLength"] output').textContent
     };
     del.click();
-    var finalOptions = Array.from(select.options).map((o) => o.value);
+    var finalOptions = optionValues();
 
     return {
       saved: saved,
+      afterEdit: afterEdit,
       downloadName: downloadName,
       exported: {
         app: exportedDoc.app,
@@ -330,23 +354,25 @@ async function main() {
       finalOptions: finalOptions
     };
   })()`);
-  check('save template adds an option', templates.saved.options, ['', 'Test Template']);
-  check('save template selects the new option', templates.saved.value, 'Test Template');
+  const BASE_TEMPLATES = ['custom', 'builtin:tarmac', 'builtin:crux', 'builtin:classic', 'builtin:gravel650'];
+  check('save template adds it under My templates', templates.saved.options, BASE_TEMPLATES.concat(['user:Test Template']));
+  check('save template selects the new user template', templates.saved.value, 'user:Test Template');
   check('delete is enabled after saving', templates.saved.deleteDisabled, false);
   check('template stores fitting data', templates.saved.stored, true);
   check('export builds a schema-versioned file', [templates.exported.app, templates.exported.schemaVersion], ['Bike Geo', 1]);
-  check('export contains the template and fitting', [templates.exported.count, templates.exported.name, templates.exported.fitting.stemLength, templates.exported.fitting.saddleHeight],
+  check('export contains only user templates and fitting', [templates.exported.count, templates.exported.name, templates.exported.fitting.stemLength, templates.exported.fitting.saddleHeight],
     [1, 'Test Template', 121.66, 700]);
   check('export file is date-stamped', /^bikegeo-templates-\d{8}\.json$/.test(templates.downloadName), true);
+  check('editing detaches the template', [templates.afterEdit.value, templates.afterEdit.deleteDisabled], ['custom', true]);
   check('loading a template restores inputs and fitting',
-    [templates.loaded.frontCenter, templates.loaded.saddleHeight, templates.loaded.over, templates.loaded.insert],
-    ['574.5', '700', '253.0', '97.0']);
-  check('deleting removes the template', templates.deleted.options, ['']);
-  check('delete is disabled after removal', templates.deleted.deleteDisabled, true);
-  check('import restores the template', templates.imported.options, ['', 'Test Template']);
+    [templates.loaded.frontCenter, templates.loaded.saddleHeight, templates.loaded.over, templates.loaded.insert, templates.loaded.value],
+    ['574.5', '700', '253.0', '97.0', 'user:Test Template']);
+  check('deleting removes the user template', templates.deleted.options, BASE_TEMPLATES);
+  check('delete is disabled after removal', [templates.deleted.value, templates.deleted.deleteDisabled], ['custom', true]);
+  check('import restores the user template', templates.imported.options, BASE_TEMPLATES.concat(['user:Test Template']));
   check('imported template restores fitting', [templates.importedLoaded.saddleHeight, templates.importedLoaded.over],
     ['700', '253.0']);
-  check('imported template can be deleted', templates.finalOptions, ['']);
+  check('imported template can be deleted', templates.finalOptions, BASE_TEMPLATES);
 
   /* Tire model: +1 mm width -> +2 mm outer diameter (700C x 26 -> 674). */
   const tyre = await evaluate(`(function () {
@@ -377,13 +403,13 @@ async function main() {
       wheelbase: document.querySelector('.computed-row[data-key="wheelbase"] .value').textContent,
       expectedReach: fmt(solved.reach, 1),
       expectedWheelbase: fmt(solved.wheelbase, 1),
-      preset: document.getElementById('preset-select').value,
+      preset: document.getElementById('template-select').value,
       scene: document.querySelectorAll('#drawing .part').length
     };
   })()`);
   check('tuning recomputes reach', edited.reach, edited.expectedReach);
   check('tuning recomputes wheelbase', edited.wheelbase, edited.expectedWheelbase);
-  check('tuning switches preset to custom', edited.preset, 'custom');
+  check('tuning switches template to custom', edited.preset, 'custom');
   check('tuning keeps the scene alive', edited.scene, 21);
 
   const hovered = await evaluate(`(function () {
@@ -420,17 +446,21 @@ async function main() {
   check('clamped value is redrawn', clamped.reach, clamped.expected);
 
   const presetA = await evaluate(`(function () {
-    const select = document.getElementById('preset-select');
-    select.value = 'crux';
+    const select = document.getElementById('template-select');
+    select.value = 'builtin:crux';
     select.dispatchEvent(new Event('change', { bubbles: true }));
     return {
       frontCenter: document.getElementById('field-frontCenter').value,
       tire: document.getElementById('field-tireWidth').value,
-      badge: document.getElementById('stage-badge').textContent
+      badge: document.getElementById('stage-badge').textContent,
+      templateValue: select.value,
+      deleteDisabled: document.getElementById('template-delete').disabled
     };
   })()`);
-  check('preset fills bike A fields', [presetA.frontCenter, presetA.tire], ['594.1', '38']);
-  check('preset updates the badge', presetA.badge, '700C / 29" \u00b7 38 mm \u00b7 OD 698.0 mm');;
+  check('built-in template fills bike A fields', [presetA.frontCenter, presetA.tire], ['594.1', '38']);
+  check('built-in template updates the badge', presetA.badge, '700C / 29" \u00b7 38 mm \u00b7 OD 698.0 mm');;
+  check('built-in template is selected in the same picker', presetA.templateValue, 'builtin:crux');
+  check('built-in template stays protected', presetA.deleteDisabled, true);
 
   /* ---------------------------------------------------------------- *
    * 3. Add a second bike -> overlay + comparison table
@@ -617,12 +647,13 @@ async function main() {
     document.getElementById('view-params').click();
     const tab = document.querySelectorAll('.bike-tab')[1];
     tab.click();
-    const presetId = document.getElementById('preset-select').value;
+    const templateId = document.getElementById('template-select').value;
     const input = document.getElementById('field-frontCenter');
     const before = input.value;
     input.value = '580';
     input.dispatchEvent(new Event('input', { bubbles: true }));
 
+    const presetId = templateId.replace(/^builtin:/, '');
     const presets = window.BikeGeo.PRESETS;
     const R = window.BikeGeoRender;
     const preset = presets.filter((p) => p.id === presetId)[0];
@@ -656,8 +687,8 @@ async function main() {
       })()
     };
   })()`);
-  check('bike B is the next unused preset', editB.presetId, 'tarmac');
-  check('bike B starts from its preset values', editB.before, '574.5');
+  check('bike B is the next unused template', editB.presetId, 'tarmac');
+  check('bike B starts from its template values', editB.before, '574.5');
   check('selecting bike B marks its tab', editB.selectedTab, '1');
   check('selecting bike B marks its group', editB.selectedGroup.includes('bike-1'), true);
   check('tuning bike B recomputes its reach', editB.computedReach, editB.expectedReach);
