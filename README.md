@@ -10,15 +10,16 @@ Reach / Stack / Wheelbase / Trail 等结果，并在点阵纸风格的画布上�
 ## 功能
 
 - **参数化车架几何**：11 项必要输入，自动推导 12 项结果
-  （Reach / Stack / Stack-Reach 比、Wheelbase、Trail、有效上管、轮胎外径等）
+  （Reach / Stack / Stack-Reach 比、Wheelbase、Trail、有效上管、轮胎外径等）；
+  Fork length 使用 A2C（沿舵管、忽略 rake），内部按 `√(A2C² + rake²)` 计入前轴偏移
 - **最多 3 台车彩色叠画对比**（黑 / baby 蓝 / 活力橙），带数值差表；
   轮胎环带按车色淡染
 - **两种对齐基线**：后轴对齐 / 地面线对齐
 - **Personal Fitting Area（可选）**：把立 Length/Angle/Reach/Stack 双向换算，
   Spacer Height 垫圈高度，Saddle Height + Seatpost Length 派生
   Seatpost Over Frame / Insert Length，Crank Length 垂直绘制；留空不影响车架几何
-- **Stem Comparison Mode**：两台车按头管顶端对齐，放大头管/垫圈/把立区域；
-  Spacer Height 以该车颜色淡色带绘制，把立叠加在垫圈上方，便于比较把立设定
+- **Stem Comparison Mode**：两台车按头管顶端对齐，视角放大到头管/垫圈/把立区域
+  （保留整车线条），Spacer Height 以该车颜色淡色带绘制，把立叠加在垫圈上方，便于比较把立设定
 - **自定义模板**：保存在本机浏览器，可整体导出为 JSON / 在新设备导入
 - **悬停联动标注**：悬停参数行，对应线条高亮并显示尺寸
 - **导出矢量 SVG**：可在 Illustrator / Figma / CAD 中继续编辑

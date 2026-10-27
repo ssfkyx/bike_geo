@@ -18,7 +18,8 @@ Custom。可将当前车的输入用 Save template 存成命名模板（本机�
 主要功能
 
 1. 参数化线稿：输入侧为 BSD、胎宽、后下叉长、BB drop、立管长/角、头管长/角、
-   前中心、前叉 Rake（Fork offset）与前叉长度（Fork length）；Reach、Stack、
+   前中心、前叉 Rake（Fork offset）与前叉长度（Fork length，A2C，沿舵管方向
+   测量、忽略 rake）；Reach、Stack、
    Wheelbase、有效上管、Trail、机械 Trail、轮胎外径等由几何关系反推。Reach、
    Stack 与 Stack/Reach 比作为结果列在 Compensated 最前面。这样避免同时输入
    Reach/Stack 与前叉长度/Rake 造成的过约束矛盾。
@@ -48,9 +49,9 @@ Custom。可将当前车的输入用 Save template 存成命名模板（本机�
    不改变车架几何结果，仅在填写后叠加绘制并进入对比表。
 
 8. Stem Comparison Mode：有 2 台以上车时可用。点击画布右下角 Stem compare，两台车按
-   头管顶端对齐并放大到头管区域；Spacer Height 以当前车颜色更淡的色带绘制，把立从
-   垫圈顶端出发叠加在上方；悬停 Spacer Height 行可显示垫圈高度尺寸。再次点击恢复
-   后轴对齐。
+   头管顶端对齐并放大到头管区域（整车线条保留）；Spacer Height 以当前车颜色更淡的
+   色带绘制，把立从垫圈顶端出发叠加在上方；悬停 Spacer Height 行可显示垫圈高度
+   尺寸。再次点击恢复后轴对齐。
 
 9. 导出：当前画布可导出为独立 SVG，包含各车颜色、点阵纸与标注，可在 Illustrator、
    Figma 或 CAD 中继续编辑。
@@ -67,6 +68,9 @@ Length；Seatpost Insert Length = Seatpost Length − Seatpost Over Frame。两�
 
 Spacer Height 为头管顶端到把立之间的垫圈总高度：在画布上沿舵管绘制为该车颜色的
 淡色带，把立起点相应上移；Stem Reach / Stack 仍以把立自身起点为基准，不含垫圈高度。
+
+前叉长度按 A2C（沿舵管方向、忽略 rake）输入；程序内部用 √(A2C² + rake²) 计入前轴
+偏移，得到前轴到头管下沿的真实直线距离。因此表格里的 Fork Length (full) 可以直接填入。
 
 轮径计算逻辑
 

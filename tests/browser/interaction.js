@@ -593,7 +593,7 @@ async function main() {
   check('stem comparison toggles on', [stemMode.pressedOn, stemMode.activeOn], ['true', true]);
   check('head tube tops are aligned', stemMode.aligned, true);
   check('both spacer stacks are drawn', stemMode.spacerCount, 2);
-  check('spacer uses a lighter tint', stemMode.spacerOpacity, '0.3');
+  check('spacer uses a lighter tint', stemMode.spacerOpacity, '0.58');
   check('spacer band is wide', stemMode.spacerWidth, '8px');
   check('spacer height ratio follows the values', stemMode.spacerRatio > 1.8 && stemMode.spacerRatio < 2.2, true);
   check('stem sits on top of the spacer', stemMode.join.map((j) => j.stemAtSpacerTop), [true, true]);

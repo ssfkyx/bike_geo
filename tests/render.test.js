@@ -14,7 +14,7 @@ const G = Geo.solve(); // Tarmac SL7
 const G2 = Geo.solve({
   bsd: 622, tireWidth: 38, chainstay: 425, bbDrop: 74,
   seatTubeLength: 466, seatTubeAngle: 75.5, headTubeAngle: 70.5,
-  headTubeLength: 100, frontCenter: 594.1, forkOffset: 50, forkLength: 404.5
+  headTubeLength: 100, frontCenter: 594.1, forkOffset: 50, forkLength: 401.4
 });
 
 function fakeSvg() {
@@ -421,7 +421,10 @@ test('head-tube alignment puts both head tube tops at the same point', () => {
     { g: G2, fitting: null, colorIndex: 1, selected: false }
   ], null, true, 'headtube');
   assert.equal(result.align, 'headtube');
+  assert.ok(svg.attrs['class'].includes('is-stem-compare'), 'stem comparison focus class is set');
+  assert.ok(svg.innerHTML.includes('scene is-stem-compare'), 'scene carries the focus class');
   assert.ok(svg.innerHTML.includes('stem-guide'), 'head-tube top guide is drawn');
+  assert.ok(svg.innerHTML.includes('data-part="wheel-front"'), 'full bike stays drawn while zoomed');
   assert.ok(result.box.w < box.w + 1, 'stem comparison crops to the head tube area');
   assert.ok(Math.abs(result.box.x) <= 600 && result.box.y <= 0 && result.box.y + result.box.h >= 0,
     'view box stays centred on the aligned head tube top');

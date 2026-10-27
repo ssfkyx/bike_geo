@@ -581,7 +581,7 @@
       case 'forkLength':
         return [
           tag(ctx, [(htBottom[0] + front[0]) / 2, (htBottom[1] + front[1]) / 2 + ctx.fs * 0.4],
-            'Fork ' + fmt(g.forkLength, 1) + ' mm', 'start')
+            'Fork A2C ' + fmt(g.forkLength, 1) + ' mm', 'start')
         ];
 
       case 'stackReachRatio':
@@ -676,25 +676,19 @@
       extraPoints = extraPoints.concat(fittingPoints(entry.fitting));
     });
     var box = viewBoxFor(geometries, extraPoints);
-    var stemDetail = false;
 
     if (align === 'headtube') {
       var focusPoints = [];
-      var hasStemFocus = false;
       entries.forEach(function (entry) {
         focusPoints.push(entry.g.htTop, entry.g.htBottom);
         var points = entry.fitting && entry.fitting.points;
         if (points) {
-          if (points.stemEnd || points.spacerEnd) hasStemFocus = true;
           focusPoints.push(points.spacerStart, points.spacerEnd,
             points.stemClamp, points.stemEnd);
         }
       });
-      if (hasStemFocus) {
-        var focusBox = stemFocusBox(focusPoints);
-        if (focusBox) box = focusBox;
-        stemDetail = true;
-      }
+      var focusBox = stemFocusBox(focusPoints);
+      if (focusBox) box = focusBox;
     }
 
     var selected = entries.filter(function (entry) { return entry.selected; })[0] || entries[0];
@@ -718,18 +712,9 @@
     });
     var scene = order.map(function (entry) {
       var cls = 'bike bike-' + entry.colorIndex + (entry.selected ? ' is-selected' : '');
-      var frameParts = buildParts(entry.g);
-      var fittingParts = buildFittingParts(entry.g, entry.fitting);
-      if (stemDetail) {
-        // Stem comparison is a detail view: head tubes, spacers and stems only.
-        frameParts = frameParts.filter(function (part) { return part.id === 'headtube'; });
-        fittingParts = fittingParts.filter(function (part) {
-          return part.id === 'fit-spacer' || part.id === 'fit-stem';
-        });
-      }
       return '<g class="' + cls + '">' +
-        serializeParts(frameParts, activeParts) +
-        serializeParts(fittingParts, activeParts) +
+        serializeParts(buildParts(entry.g), activeParts) +
+        serializeParts(buildFittingParts(entry.g, entry.fitting), activeParts) +
         '</g>';
     }).join('');
     if (align === 'headtube') {
@@ -741,14 +726,17 @@
       ? annotationFor(options.activeKey, selected.g, ctx, selected.fitting)
       : [];
 
-    if (options.activeKey) {
-      svgEl.setAttribute('class', 'is-inspecting');
+    if (options.activeKey || align === 'headtube') {
+      var svgClasses = [];
+      if (options.activeKey) svgClasses.push('is-inspecting');
+      if (align === 'headtube') svgClasses.push('is-stem-compare');
+      svgEl.setAttribute('class', svgClasses.join(' '));
     } else {
       svgEl.removeAttribute('class');
     }
     svgEl.setAttribute('viewBox', [box.x, box.y, box.w, box.h].join(' '));
     svgEl.innerHTML =
-      '<g class="scene">' + scene + '</g>' +
+      '<g class="scene' + (align === 'headtube' ? ' is-stem-compare' : '') + '">' + scene + '</g>' +
       '<g class="annotations">' + serializeAnnotations(annotations, ctx) + '</g>';
 
     return { box: box, geometryCount: entries.length, align: align };
@@ -771,6 +759,12 @@
     '.part.fit.spacer.is-active{stroke-width:12px;opacity:.55}',
     '.part.is-active{stroke-width:4.2px}',
     '.stem-guide{stroke:#c7d0da;stroke-width:1px;stroke-dasharray:6 8}',
+    '.scene.is-stem-compare .part{opacity:.18}',
+    '.scene.is-stem-compare .part[data-part="headtube"]{opacity:.52}',
+    '.scene.is-stem-compare .part.fit.stem{opacity:1}',
+    '.scene.is-stem-compare .part.fit.spacer{opacity:.58}',
+    '.scene.is-stem-compare .part.is-active{opacity:1}',
+    '.scene.is-stem-compare .stem-guide{opacity:.8}',
     'text{font-family:ui-monospace,Consolas,monospace}',
     '.dim-line{fill:none;stroke:#d9480f;stroke-width:1.2px}',
     '.dim-ext{fill:none;stroke:#c2cad4;stroke-width:1px;stroke-dasharray:5 5}',

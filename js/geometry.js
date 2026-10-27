@@ -35,7 +35,7 @@
     headTubeLength: 102,
     frontCenter: 574.5,    // BB center -> front axle, straight-line
     forkOffset: 47.5,      // perpendicular distance, front axle -> steering axis
-    forkLength: 388.3      // front axle -> head-tube bottom, straight-line
+    forkLength: 385.4      // A2C along the steerer (rake ignored); see solve()
   });
 
   var INPUT_RULES = {
@@ -59,7 +59,7 @@
       inputs: {
         bsd: 622, tireWidth: 26, chainstay: 410, bbDrop: 74,
         seatTubeLength: 447, seatTubeAngle: 75.5, headTubeAngle: 71.75,
-        headTubeLength: 102, frontCenter: 574.5, forkOffset: 47.5, forkLength: 388.3
+        headTubeLength: 102, frontCenter: 574.5, forkOffset: 47.5, forkLength: 385.4
       }
     },
     {
@@ -68,7 +68,7 @@
       inputs: {
         bsd: 622, tireWidth: 38, chainstay: 425, bbDrop: 74,
         seatTubeLength: 466, seatTubeAngle: 75.5, headTubeAngle: 70.5,
-        headTubeLength: 100, frontCenter: 594.1, forkOffset: 50, forkLength: 404.5
+        headTubeLength: 100, frontCenter: 594.1, forkOffset: 50, forkLength: 401.4
       }
     },
     {
@@ -77,7 +77,7 @@
       inputs: {
         bsd: 622, tireWidth: 28, chainstay: 410, bbDrop: 70,
         seatTubeLength: 510, seatTubeAngle: 73.5, headTubeAngle: 73.25,
-        headTubeLength: 160, frontCenter: 592.2, forkOffset: 48.4, forkLength: 369.5
+        headTubeLength: 160, frontCenter: 592.2, forkOffset: 48.4, forkLength: 366.3
       }
     },
     {
@@ -86,7 +86,7 @@
       inputs: {
         bsd: 584, tireWidth: 47, chainstay: 430, bbDrop: 70,
         seatTubeLength: 500, seatTubeAngle: 73.5, headTubeAngle: 71.5,
-        headTubeLength: 130, frontCenter: 599.8, forkOffset: 45.9, forkLength: 415.2
+        headTubeLength: 130, frontCenter: 599.8, forkOffset: 45.9, forkLength: 412.7
       }
     }
   ];
@@ -174,16 +174,18 @@
     var steerDown = { x: Math.cos(hta), y: -Math.sin(hta) }; // down the steering axis
     var steerNormal = { x: Math.sin(hta), y: Math.cos(hta) }; // forward/up from the axis
 
-    // The front axle sits `forkOffset` perpendicular from the steering axis;
-    // the head-tube bottom sits `forkLength` from the axle. This derives the
-    // head tube position (and therefore reach/stack) instead of assuming them.
+    // The front axle sits `forkOffset` perpendicular from the steering axis.
+    // `forkLength` is the axle-to-crown length measured along the steerer
+    // (rake ignored). The real straight-line distance from the head-tube bottom
+    // to the axle includes the rake component: sqrt(A2C^2 + rake^2).
     var forkOffset = input.forkOffset;
     var forkLength = input.forkLength;
+    var forkLengthStraight = Math.sqrt(forkLength * forkLength + forkOffset * forkOffset);
     var axisFoot = {
       x: frontAxle.x - forkOffset * steerNormal.x,
       y: frontAxle.y - forkOffset * steerNormal.y
     };
-    var alongAxis = Math.sqrt(Math.max(forkLength * forkLength - forkOffset * forkOffset, 0));
+    var alongAxis = Math.max(forkLength, 0);
     var htBottom = add(axisFoot, scaled(steerDir, alongAxis));
     var htTop = add(htBottom, scaled(steerDir, input.headTubeLength));
 
@@ -238,6 +240,7 @@
       effectiveTopTube: effectiveTopTube,
       forkOffset: forkOffset,
       forkLength: forkLength,
+      forkLengthStraight: forkLengthStraight,
       trail: trail,
       mechanicalTrail: mechanicalTrail,
       stackReachRatio: stack / reach,
@@ -281,8 +284,8 @@
     { group: 'input', key: 'forkOffset', label: 'Fork offset (rake)', unit: 'mm', precision: 1,
       hint: 'Perpendicular distance from the front axle to the steering axis',
       parts: ['fork', 'hub-front'] },
-    { group: 'input', key: 'forkLength', label: 'Fork length', unit: 'mm', precision: 1,
-      hint: 'Front axle -> head-tube bottom (straight-line)',
+    { group: 'input', key: 'forkLength', label: 'Fork length (A2C)', unit: 'mm', precision: 1,
+      hint: 'Axle-to-crown, measured along the steerer (rake ignored). The solver adds the rake component.',
       parts: ['fork'] },
 
     // Compensated / derived --------------------------------------------

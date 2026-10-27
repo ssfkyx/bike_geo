@@ -45,7 +45,7 @@ Eleven inputs are enough to pin the whole side view down:
 | Head tube length | mm |
 | Front center (BB center → front axle) | mm |
 | Fork offset / rake (front axle → steering axis, perpendicular) | mm |
-| Fork length (front axle → head-tube bottom) | mm |
+| Fork length A2C (along the steerer, rake ignored) | mm |
 
 Reach, stack and wheelbase are **results**, not inputs. Everything else is
 derived by `js/geometry.js`:
@@ -60,8 +60,10 @@ derived by `js/geometry.js`:
   ![Hovering Tire outer diameter highlights the wheels and draws Ø 674 mm across the front wheel](tire-od.png)
 - **reach, stack, stack/reach ratio** — placing the front axle from the front
   center + BB drop, offsetting the steering axis from the axle by the rake, and
-  putting the head-tube bottom one fork length from the axle gives the head
-  tube; its top (plus head-tube length) relative to the BB is reach/stack.
+  putting the head-tube bottom one **A2C fork length** along the steerer from the
+  axle projection gives the head tube; its top (plus head-tube length) relative
+  to the BB is reach/stack. The straight axle-to-head-tube-bottom distance is
+  `√(A2C² + rake²)`.
 - **wheelbase** — the two horizontal projections:
   `√(chainstay² − bbDrop²) + √(frontCenter² − bbDrop²)`.
 - BB height, chainstay horizontal, front-center horizontal, effective top tube
@@ -74,7 +76,8 @@ The derivation (world coordinates, rear axle at origin):
 frontAxle        = bb + (√(frontCenter² − bbDrop²), +bbDrop)
 steering axis    = line through frontAxle − rake·n, direction u = (−cos HTA, sin HTA)
                    with n = (sin HTA, cos HTA)
-headTubeBottom   = (frontAxle − rake·n) + √(forkLength² − rake²)·u
+headTubeBottom   = (frontAxle − rake·n) + forkLengthA2C·u
+forkLengthStraight = √(forkLengthA2C² + rake²)
 headTubeTop      = headTubeBottom + headTubeLength·u
 reach / stack    = headTubeTop − bb
 wheelbase        = frontAxle.x
@@ -153,11 +156,11 @@ back into reach / stack / wheelbase.
 - **Stem compare** — enabled with at least two bikes. `align: 'headtube'`
   translates every bike so its head-tube top lands on the world origin
   (`Render.alignGeometries(..., 'headtube')`); fitting points are translated
-  with the frame. When stem/spacer data exists the renderer crops the view box
-  to the head-tube area (`stemFocusBox`) so spacer differences stay readable,
-  and draws a dotted `stem-guide` through the aligned head-tube tops. Spacer
-  stacks are thick low-opacity bands (`fit-spacer`) and the stem starts at the
-  top of the spacer. Hovering `spacerHeight` draws its dimension tag.
+  with the frame. The renderer keeps the full bike scene but zooms the view box
+  to the head-tube / stem area (`stemFocusBox`) so spacer differences stay
+  readable, and draws a dotted `stem-guide` through the aligned head-tube tops.
+  Spacer stacks are thick low-opacity bands (`fit-spacer`) and the stem starts
+  at the top of the spacer. Hovering `spacerHeight` draws its dimension tag.
 - **Templates** — `Save template` stores the selected bike's inputs (including
   fitting fields) under a name in `localStorage` (key `bikegeo.templates.v1`);
   the Templates dropdown loads one into the selected bike and `×` deletes it.
@@ -199,11 +202,16 @@ module that turns them into a portable document:
   "exportedAt": "2026-10-27T09:00:00.000Z",
   "templates": [
     { "name": "Road fit", "presetId": "tarmac",
+      "forkLengthMode": "a2c",
       "inputs": { "bsd": 622, "…": "…" },
       "fitting": { "stemLength": 100, "…": "…" } }
   ]
 }
 ```
+
+`forkLengthMode: "a2c"` marks the fork-length convention. Older templates from
+the straight-line era are migrated when read: the stored value is converted to
+A2C with `√(straight² − rake²)`.
 
 `parseImport()` accepts either the object or a bare array of templates; it
 rejects invalid JSON, newer schema versions and files without valid templates,
@@ -250,12 +258,14 @@ node tests/templates.test.js
 ```
 
 - `tests/geometry.test.js` — reference-bike fixtures, geometric consistency
-  (wheelbase, seat tube, steering-axis trail identities), clamping, optional
-  fitting conversions / derived seatpost values / fit points.
+  (wheelbase, seat tube, steering-axis trail identities), A2C ↔ straight fork
+  conversion, clamping, optional fitting conversions / derived seatpost values /
+  fit points.
 - `tests/render.test.js` — scene parts, view box containment (single + multi
   bike), colour groups, hover highlighting + dimensions, fit overlays, spacer
-  bands, head-tube alignment and focused stem view, ground alignment shifting,
-  standalone SVG export, "no NaN coordinates", re-render after tuning.
+  bands, head-tube alignment and magnified (unfiltered) stem view, ground
+  alignment shifting, standalone SVG export, "no NaN coordinates", re-render
+  after tuning.
 - `tests/datasource.test.js` — adapter registry contract and reserved adapter.
 - `tests/templates.test.js` — export document shape, import validation,
   round-trip, conflict-name helper and date-stamped file names.

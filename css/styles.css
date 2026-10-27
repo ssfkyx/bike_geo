@@ -1070,6 +1070,15 @@ input[type="number"]:focus {
   stroke-dasharray: 6 8;
 }
 
+/* Stem comparison zoom: keep the full bike as context, but let the
+ * spacer/stem overlays and head tubes stand out. */
+#drawing.is-stem-compare .part { opacity: .18; }
+#drawing.is-stem-compare .part[data-part="headtube"] { opacity: .52; }
+#drawing.is-stem-compare .part.fit.stem { opacity: 1; }
+#drawing.is-stem-compare .part.fit.spacer { opacity: .58; }
+#drawing.is-stem-compare .part.is-active { opacity: 1; }
+#drawing.is-stem-compare .stem-guide { opacity: .8; }
+
 #drawing .dim-line {
   fill: none;
   stroke: #d9480f;

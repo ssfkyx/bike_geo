@@ -13,6 +13,7 @@ const SAMPLE = [
   {
     name: 'Road fit',
     presetId: 'tarmac',
+    forkLengthMode: 'a2c',
     inputs: { bsd: 622, tireWidth: 26, chainstay: 410, frontCenter: 574.5 },
     fitting: { stemLength: 100, stemAngle: 6, spacerHeight: 20, saddleHeight: 700, crankLength: 172.5 }
   },
@@ -34,6 +35,7 @@ test('export document carries schema, templates, inputs and fitting data', () =>
   assert.equal(doc.templates.length, 2);
   assert.deepEqual(doc.templates[0].inputs, SAMPLE[0].inputs);
   assert.deepEqual(doc.templates[0].fitting, SAMPLE[0].fitting);
+  assert.equal(doc.templates[0].forkLengthMode, 'a2c');
 
   // The export must not alias the live template objects.
   doc.templates[0].inputs.bsd = 999;
@@ -52,6 +54,7 @@ test('export -> import round-trips names, inputs, presets and fitting', () => {
   assert.equal(parsed.skipped, 0);
   assert.equal(parsed.templates[0].name, 'Road fit');
   assert.equal(parsed.templates[0].presetId, 'tarmac');
+  assert.equal(parsed.templates[0].forkLengthMode, 'a2c');
   assert.deepEqual(parsed.templates[0].inputs, SAMPLE[0].inputs);
   assert.deepEqual(parsed.templates[0].fitting, SAMPLE[0].fitting);
   assert.equal(parsed.templates[1].presetId, null);

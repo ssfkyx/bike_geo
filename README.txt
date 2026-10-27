@@ -89,7 +89,8 @@ Windows / macOS：
 
 5) 画布右下角 "Stem compare" 按钮（Stem Comparison Mode）：
    有 2 台以上车时可用（只有 1 台时按钮为灰色）。点击后所有车按
-   "头管顶端"对齐，视图自动放大到头管 / 垫圈 / 把立区域；Personal
+   "头管顶端"对齐，视图自动放大到头管 / 垫圈 / 把立区域（整车线条仍保留，
+   只是视角拉近）；Personal
    Fitting 中的 Spacer Height 会以该车颜色更淡的色带画在头管顶端与
    把立之间，把立则从垫圈顶端出发叠加在上方。再次点击恢复后轴对齐。
    悬停 Spacer Height 行可在画布上看到该垫圈高度的尺寸标注。
@@ -109,12 +110,14 @@ Head tube angle   头管角度：相对水平线（°）。
 Head tube length  头管长度（mm）。
 Front center      五通中心 → 前轴中心的直线距离（mm）。
 Fork offset       前叉偏移（Rake）：前轴到转向轴线的垂直距离（mm）。
-Fork length       前叉长度：前轴 → 头管下沿的直线距离（mm）。
+Fork length       前叉 A2C：沿舵管方向、忽略 rake 的轴到叉肩/头管下沿长度（mm）。
+                  程序内部会按 √(A2C² + rake²) 计入前轴偏移，得到前轴到
+                  头管下沿的真实直线距离。
 
 说明：Reach、Stack、Wheelbase 不是输入，而是上述几何推导出的结果。
 前轴位置由 Front center + BB drop 确定；车头位置由头管角度/长度、
-Fork length、Fork offset 从前轴反推；Wheelbase 则由"后下叉 + BB drop"
-与"前中心 + BB drop"两次水平投影相加得到。
+Fork length（A2C，忽略 rake）、Fork offset 从前轴反推；Wheelbase 则由
+"后下叉 + BB drop" 与"前中心 + BB drop"两次水平投影相加得到。
 
 
 五、自动补全参数（12 项）
@@ -231,8 +234,9 @@ Crankset（牙盘）：
   · 右下角 "On the ground" 按钮：切换叠画基线。默认后轴对齐；按下后
     按车轮最低线（地面线）对齐，能看出不同轮径/胎宽带来的五通高度与
     车架高度差异；再按一次恢复；
-  · 右下角 "Stem compare" 按钮：按头管顶端对齐并放大头管区域，配合
-    Spacer Height 比较两台车的垫圈/把立叠加位置；再按一次恢复后轴对齐；
+  · 右下角 "Stem compare" 按钮：按头管顶端对齐并放大头管区域（保留整车
+    线条），配合 Spacer Height 比较两台车的垫圈/把立叠加位置；再按一次
+    恢复后轴对齐；
   · Compare 表列出全部 23 项（11 个输入 + 12 个补全参数）在 A/B/C 上
     的数值，并显示 B、C 相对 A 车的差值；
   · 任一台车填写了 Personal Fitting 数据时，对比表末尾会追加
@@ -294,6 +298,11 @@ Export templates / Import templates：
 答：切换叠画基线。默认按后轴对齐（方便比较车架几何）；按下后改成
     按车轮最低线（地面线）对齐，能看出轮径/胎宽造成的五通高度与
     整车高度差异；再按一次恢复后轴对齐。
+
+问：为什么 Fork length 要填 A2C，而不是前轴到头管下沿的直线距离？
+答：表格里的 Fork length (full) / A2C 通常沿舵管方向测量、忽略 rake；
+    本工具内部再用 √(A2C² + rake²) 计入前轴偏移。若直接把 A2C 当作
+    直线距离填入，Stack 会偏小约 2~4mm（Reach 也会有约 1mm 偏差）。
 
 问：Stem compare 模式怎么用？
 答：先添加第二台车，在 Personal Fitting 中填写两车的 Stem 与

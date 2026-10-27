@@ -470,17 +470,33 @@
       return list.filter(function (template) {
         return template && typeof template.name === 'string' &&
           template.inputs && typeof template.inputs === 'object';
-      }).map(function (template) {
-        return {
-          name: template.name,
-          inputs: template.inputs,
-          presetId: template.presetId || null,
-          fitting: cloneFitting(template.fitting)
-        };
-      });
+      }).map(normalizeTemplate);
     } catch (err) {
       return [];
     }
+  }
+
+  /* Older templates stored forkLength as the straight axle-to-HT-bottom
+   * distance. The current field is A2C (rake ignored), so convert old values
+   * once with the Pythagorean relation. */
+  function normalizeTemplate(template) {
+    var inputs = Object.assign({}, template.inputs);
+    var mode = template.forkLengthMode === 'a2c' ? 'a2c' : 'straight';
+    if (mode !== 'a2c') {
+      var straight = parseFloat(inputs.forkLength);
+      var rake = parseFloat(inputs.forkOffset);
+      if (isFinite(straight) && isFinite(rake)) {
+        inputs.forkLength = Math.sqrt(Math.max(straight * straight - rake * rake, 0));
+      }
+      mode = 'a2c';
+    }
+    return {
+      name: template.name,
+      inputs: inputs,
+      presetId: template.presetId || null,
+      fitting: cloneFitting(template.fitting),
+      forkLengthMode: mode
+    };
   }
 
   function storeTemplates() {
@@ -533,7 +549,8 @@
       name: name,
       inputs: Object.assign({}, currentBike().inputs),
       presetId: currentBike().presetId,
-      fitting: cloneFitting(currentBike().fitting)
+      fitting: cloneFitting(currentBike().fitting),
+      forkLengthMode: 'a2c'
     };
     if (existing >= 0) templates[existing] = record;
     else templates.push(record);
@@ -552,6 +569,7 @@
       resetTemplateSelection();
       return;
     }
+    record = normalizeTemplate(record);
 
     var bike = currentBike();
     bike.inputs = {};
@@ -604,7 +622,8 @@
     var overwritten = 0;
     var renamed = 0;
 
-    parsed.templates.forEach(function (incoming) {
+    parsed.templates.forEach(function (rawTemplate) {
+      var incoming = normalizeTemplate(rawTemplate);
       var existing = -1;
       templates.forEach(function (template, index) {
         if (template.name === incoming.name) existing = index;

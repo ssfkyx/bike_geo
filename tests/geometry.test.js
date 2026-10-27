@@ -17,13 +17,13 @@ const Geo = require('../js/geometry.js');
 const TARMAC = {
   bsd: 622, tireWidth: 26, chainstay: 410, bbDrop: 74,
   seatTubeLength: 447, seatTubeAngle: 75.5, headTubeAngle: 71.75,
-  headTubeLength: 102, frontCenter: 574.5, forkOffset: 47.5, forkLength: 388.3
+  headTubeLength: 102, frontCenter: 574.5, forkOffset: 47.5, forkLength: 385.4
 };
 
 const CRUX = {
   bsd: 622, tireWidth: 38, chainstay: 425, bbDrop: 74,
   seatTubeLength: 466, seatTubeAngle: 75.5, headTubeAngle: 70.5,
-  headTubeLength: 100, frontCenter: 594.1, forkOffset: 50, forkLength: 404.5
+  headTubeLength: 100, frontCenter: 594.1, forkOffset: 50, forkLength: 401.4
 };
 
 function near(actual, expected, tolerance, label) {
@@ -53,7 +53,9 @@ test('Tarmac 49 derives the published values', () => {
   near(g.reach, 372, 0.5, 'reach (derived)');                            // published 372
   near(g.stack, 522, 0.5, 'stack (derived)');                            // published 522
   near(g.forkOffset, 47.5, 0.01, 'fork offset (input)');                 // published 47
-  near(g.forkLength, 388.3, 0.01, 'fork length (input)');
+  near(g.forkLength, 385.4, 0.01, 'fork A2C (input)');
+  near(g.forkLengthStraight, Math.sqrt(385.4 * 385.4 + 47.5 * 47.5), 1e-9,
+    'fork straight-line includes rake');
   near(g.trail, 61.5, 1.2, 'trail');                                      // published 61.6
   near(g.mechanicalTrail, 58.5, 1.2, 'mechanical trail');                 // published 58.5
   near(g.effectiveTopTube, 509, 3, 'effective top tube');                 // published 509
@@ -124,12 +126,17 @@ test('solved points are internally consistent', () => {
     near(g.wheelbase, g.frontAxle.x, 1e-9, 'wheelbase = front axle x');
     near(Geo.dist(g.rearAxle, g.frontAxle), g.wheelbase, 1e-9, 'rear axle to front axle');
 
-    // Front end: fork offset is the perpendicular axle-to-axis distance and the
-    // fork length is the straight axle-to-head-tube-bottom distance.
+    // Front end: fork offset is the perpendicular axle-to-axis distance.
+    // Fork length (A2C) is measured along the steerer, ignoring rake; the
+    // straight-line axle-to-head-tube-bottom distance adds the rake vector.
     const u = g.steerDir;
     const v = { x: g.frontAxle.x - g.htBottom.x, y: g.frontAxle.y - g.htBottom.y };
     near(Math.abs(u.x * v.y - u.y * v.x), g.input.forkOffset, 1e-9, 'fork offset');
-    near(Geo.dist(g.htBottom, g.frontAxle), g.input.forkLength, 1e-9, 'fork length');
+    near(Geo.dist(g.htBottom, g.frontAxle), g.forkLengthStraight, 1e-9, 'fork straight length');
+    near(g.forkLengthStraight,
+      Math.sqrt(g.forkLength * g.forkLength + g.forkOffset * g.forkOffset),
+      1e-9, 'A2C + rake vector relation');
+    near(g.forkLength, g.input.forkLength, 1e-9, 'fork A2C is the input');
 
     // Trail identities and wheel-on-ground.
     near(g.trail * Math.sin(hta), g.mechanicalTrail, 0.5, 'trail * sin(HTA)');

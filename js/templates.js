@@ -43,7 +43,8 @@
           name: template.name,
           inputs: copyInputs(template.inputs),
           presetId: template.presetId || null,
-          fitting: copyFitting(template.fitting)
+          fitting: copyFitting(template.fitting),
+          forkLengthMode: template.forkLengthMode || null
         };
       })
     };
@@ -96,7 +97,8 @@
         presetId: typeof item.presetId === 'string' ? item.presetId : null,
         fitting: (item.fitting && typeof item.fitting === 'object' && !Array.isArray(item.fitting))
           ? copyFitting(item.fitting)
-          : {}
+          : {},
+        forkLengthMode: item.forkLengthMode === 'a2c' ? 'a2c' : null
       });
     });
     if (!templates.length) throw new Error('No valid templates in this file');
