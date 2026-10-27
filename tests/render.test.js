@@ -370,3 +370,64 @@ test('standalone SVG export keeps fitting overlays and their styles', () => {
   assert.ok(svg.includes('data-part="fit-crank"'), 'crank is exported');
   assert.ok(svg.includes('.part.fit{stroke-width:1.6px'), 'fit style is inlined');
 });
+
+test('spacer height draws a lighter band under the raised stem', () => {
+  const fitting = Geo.solveFitting({ stemLength: 100, stemAngle: 6, spacerHeight: 20 }, G);
+  const parts = Render.buildFittingParts(G, fitting);
+  const spacer = parts.filter((p) => p.id === 'fit-spacer')[0];
+  const stem = parts.filter((p) => p.id === 'fit-stem')[0];
+
+  assert.ok(spacer, 'spacer band is a scene part');
+  assert.deepEqual(spacer.a, fitting.points.spacerStart);
+  assert.deepEqual(spacer.b, fitting.points.spacerEnd);
+  assert.deepEqual(stem.a, spacer.b, 'the stem starts at the top of the spacer stack');
+
+  const svg = fakeSvg();
+  render(svg, [{ g: G, fitting: fitting, colorIndex: 0, selected: true }]);
+  assert.ok(/class="part fit spacer"/.test(svg.innerHTML), 'spacer uses the lighter fit style');
+
+  render(svg, [{ g: G, fitting: fitting, colorIndex: 0, selected: true }], 'spacerHeight');
+  assert.ok(/class="part fit spacer is-active"/.test(svg.innerHTML), 'hover activates the spacer');
+  assert.ok(svg.innerHTML.includes('Spacer 20.0 mm'), 'spacer height tag is drawn');
+
+  const noSpacer = Geo.solveFitting({ stemLength: 100, stemAngle: 6 }, G);
+  render(svg, [{ g: G, fitting: noSpacer, colorIndex: 0, selected: true }]);
+  assert.ok(!svg.innerHTML.includes('data-part="fit-spacer"'), 'no band without a spacer value');
+});
+
+test('head-tube alignment puts both head tube tops at the same point', () => {
+  const aligned = Render.alignGeometries([G, G2], 'headtube');
+  for (const g of aligned) {
+    assert.ok(Math.abs(g.htTop.x) < 1e-9, 'head tube top x is the origin');
+    assert.ok(Math.abs(g.htTop.y) < 1e-9, 'head tube top y is the origin');
+  }
+  assert.ok(Math.abs(aligned[0].rearAxle.x - aligned[1].rearAxle.x) > 1,
+    'the frames still have different rear-axle positions');
+
+  const fitting = Geo.solveFitting({ stemLength: 100, stemAngle: 6, spacerHeight: 20 }, G);
+  const movedFitting = Render.translateFitting(fitting, -G.htTop.x, -G.htTop.y);
+  assert.ok(Math.abs(movedFitting.points.spacerStart.x) < 1e-9, 'fitting follows the frame shift');
+  assert.ok(Math.abs(movedFitting.points.spacerStart.y) < 1e-9, 'fitting follows the frame shift');
+
+  const box = Render.viewBoxFor(aligned);
+  const minAxleX = Math.min(
+    aligned[0].rearAxle.x, aligned[1].rearAxle.x,
+    aligned[0].frontAxle.x, aligned[1].frontAxle.x) - aligned[0].tireRadius;
+  assert.ok(box.x <= minAxleX - 80, 'view box covers the shifted rear wheel');
+
+  const svg = fakeSvg();
+  const result = render(svg, [
+    { g: G, fitting: fitting, colorIndex: 0, selected: true },
+    { g: G2, fitting: null, colorIndex: 1, selected: false }
+  ], null, true, 'headtube');
+  assert.equal(result.align, 'headtube');
+  assert.ok(svg.innerHTML.includes('stem-guide'), 'head-tube top guide is drawn');
+  assert.ok(result.box.w < box.w + 1, 'stem comparison crops to the head tube area');
+  assert.ok(Math.abs(result.box.x) <= 600 && result.box.y <= 0 && result.box.y + result.box.h >= 0,
+    'view box stays centred on the aligned head tube top');
+  const tops = [];
+  svg.innerHTML.replace(/<line[^>]*data-part="headtube"[^>]*y1="([^"]+)"[^>]*y2="([^"]+)"/g,
+    (match, y1, y2) => { tops.push(Math.min(Number(y1), Number(y2))); return match; });
+  assert.equal(tops.length, 2, 'two head tubes are drawn');
+  assert.ok(Math.abs(tops[0] - tops[1]) < 1e-6, 'head tube tops share the same screen y');
+});

@@ -45,6 +45,7 @@
     compareTable: document.getElementById('compare-table'),
     compareCount: document.getElementById('compare-count'),
     alignToggle: document.getElementById('align-toggle'),
+    stemCompare: document.getElementById('stem-compare'),
     templateSave: document.getElementById('template-save'),
     templateSelect: document.getElementById('template-select'),
     templateDelete: document.getElementById('template-delete'),
@@ -61,7 +62,7 @@
     selected: 0,
     activeKey: null,
     view: 'params',
-    grounded: false,
+    align: 'axle',
     box: null,
     rowByKey: Object.create(null),
     fittingRefs: Object.create(null),
@@ -180,7 +181,7 @@
       bikes: entries,
       activeKey: state.activeKey,
       showAnnotation: state.view === 'params',
-      align: state.grounded ? 'ground' : 'axle'
+      align: state.align
     });
     if (result) state.box = result.box;
   }
@@ -266,12 +267,23 @@
       Render.fmt(g.tireOuterDiameter, 1) + ' mm';
   }
 
-  function updateAlignButton() {
-    el.alignToggle.setAttribute('aria-pressed', state.grounded ? 'true' : 'false');
-    el.alignToggle.classList.toggle('is-on', state.grounded);
-    el.alignToggle.title = state.grounded
+  function updateAlignButtons() {
+    var groundOn = state.align === 'ground';
+    var stemOn = state.align === 'headtube';
+    el.alignToggle.setAttribute('aria-pressed', groundOn ? 'true' : 'false');
+    el.alignToggle.classList.toggle('is-on', groundOn);
+    el.alignToggle.title = groundOn
       ? 'Bikes stand on the ground line — click to align by the rear axle'
       : 'Bikes are aligned by the rear axle — click to stand them on the ground line';
+
+    el.stemCompare.disabled = state.bikes.length < 2;
+    el.stemCompare.setAttribute('aria-pressed', stemOn ? 'true' : 'false');
+    el.stemCompare.classList.toggle('is-on', stemOn);
+    el.stemCompare.title = state.bikes.length < 2
+      ? 'Add a second bike to compare stems and spacers'
+      : (stemOn
+        ? 'Head tubes aligned — click to return to rear-axle alignment'
+        : 'Stem comparison mode: align bikes by the head-tube top and compare spacers/stems');
   }
 
   function updateRowStates() {
@@ -413,6 +425,7 @@
   }
 
   function apply() {
+    if (state.bikes.length < 2 && state.align === 'headtube') state.align = 'axle';
     state.solved = state.bikes.map(function (bike) { return Geo.solve(bike.inputs); });
     solveFittingAll();
     updateView();
@@ -426,6 +439,7 @@
     syncPresetSelect();
     syncFittingInputs();
     updateRowStates();
+    updateAlignButtons();
   }
 
   /* ------------------------------------------------------------------ *
@@ -1001,10 +1015,23 @@
     el.addBike.addEventListener('click', addBike);
 
     el.alignToggle.addEventListener('click', function () {
-      state.grounded = !state.grounded;
-      updateAlignButton();
+      state.align = state.align === 'ground' ? 'axle' : 'ground';
+      updateAlignButtons();
       renderDrawing();
-      toast(state.grounded ? 'Aligned by the ground line' : 'Aligned by the rear axle');
+      toast(state.align === 'ground' ? 'Aligned by the ground line' : 'Aligned by the rear axle');
+    });
+
+    el.stemCompare.addEventListener('click', function () {
+      if (state.bikes.length < 2) return;
+      state.align = state.align === 'headtube' ? 'axle' : 'headtube';
+      if (state.align === 'headtube') state.view = 'params';
+      state.activeKey = null;
+      updateView();
+      updateAlignButtons();
+      renderDrawing();
+      toast(state.align === 'headtube'
+        ? 'Stem comparison: head tubes aligned'
+        : 'Aligned by the rear axle');
     });
 
     el.templateSave.addEventListener('click', saveTemplate);
@@ -1085,9 +1112,14 @@
     if (view === 'compare' && state.bikes.length > 1) state.view = 'compare';
     if (view === 'params') state.view = 'params';
 
-    if (params.get('align') === 'ground') state.grounded = true;
+    var alignParam = params.get('align');
+    if (alignParam === 'ground') {
+      state.align = 'ground';
+    } else if (alignParam === 'stem' || alignParam === 'headtube') {
+      state.align = state.bikes.length > 1 ? 'headtube' : 'axle';
+    }
 
-    updateAlignButton();
+    updateAlignButtons();
     apply();
 
     var activeKey = params.get('param');

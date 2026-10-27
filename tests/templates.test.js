@@ -14,7 +14,7 @@ const SAMPLE = [
     name: 'Road fit',
     presetId: 'tarmac',
     inputs: { bsd: 622, tireWidth: 26, chainstay: 410, frontCenter: 574.5 },
-    fitting: { stemLength: 100, stemAngle: 6, saddleHeight: 700, crankLength: 172.5 }
+    fitting: { stemLength: 100, stemAngle: 6, spacerHeight: 20, saddleHeight: 700, crankLength: 172.5 }
   },
   {
     name: 'Gravel fit',

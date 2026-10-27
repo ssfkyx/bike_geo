@@ -254,12 +254,20 @@ body {
   letter-spacing: .01em;
 }
 
-/* Ground / axle alignment toggle */
-.align-toggle {
+/* Ground / stem comparison alignment actions */
+.stage-actions {
   position: absolute;
   right: 14px;
   bottom: 14px;
   z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: calc(100% - 28px);
+}
+
+.align-toggle {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -279,6 +287,11 @@ body {
 .align-toggle:hover {
   color: var(--ink-2);
   border-color: var(--line-strong);
+}
+
+.align-toggle:disabled {
+  opacity: .42;
+  cursor: not-allowed;
 }
 
 .align-toggle:focus-visible {
@@ -1032,13 +1045,30 @@ input[type="number"]:focus {
 /* Personal fitting overlays: thin stem/seatpost/crank, slightly bolder saddle */
 #drawing .part.fit { stroke-width: 1.6px; opacity: .82; }
 #drawing .part.fit.saddle { stroke-width: 2.4px; opacity: .92; }
+#drawing .part.fit.spacer {
+  stroke-width: 8px;
+  opacity: .3;
+  stroke-linecap: butt;
+}
+#drawing .part.fit.spacer.is-active {
+  stroke-width: 12px;
+  opacity: .55;
+}
 
 #drawing .part.is-active { stroke-width: 4.2px; }
 
 /* Hover focus: fade everything except the related lines, on every bike. */
 #drawing.is-inspecting .part { opacity: .32; }
 #drawing.is-inspecting .part.is-active { opacity: 1; }
+#drawing.is-inspecting .part.fit.spacer.is-active { opacity: .55; }
 #drawing.is-inspecting .part.tire.is-active { fill-opacity: .30; }
+
+/* Stem comparison: thin guide through the aligned head-tube tops. */
+#drawing .stem-guide {
+  stroke: #c7d0da;
+  stroke-width: 1px;
+  stroke-dasharray: 6 8;
+}
 
 #drawing .dim-line {
   fill: none;

@@ -15,14 +15,18 @@ Reach / Stack / Wheelbase / Trail 等结果，并在点阵纸风格的画布上�
   轮胎环带按车色淡染
 - **两种对齐基线**：后轴对齐 / 地面线对齐
 - **Personal Fitting Area（可选）**：把立 Length/Angle/Reach/Stack 双向换算，
-  Saddle Height + Seatpost Length 派生 Seatpost Over Frame / Insert Length，
-  Crank Length 垂直绘制；留空不影响车架几何
+  Spacer Height 垫圈高度，Saddle Height + Seatpost Length 派生
+  Seatpost Over Frame / Insert Length，Crank Length 垂直绘制；留空不影响车架几何
+- **Stem Comparison Mode**：两台车按头管顶端对齐，放大头管/垫圈/把立区域；
+  Spacer Height 以该车颜色淡色带绘制，把立叠加在垫圈上方，便于比较把立设定
 - **自定义模板**：保存在本机浏览器，可整体导出为 JSON / 在新设备导入
 - **悬停联动标注**：悬停参数行，对应线条高亮并显示尺寸
 - **导出矢量 SVG**：可在 Illustrator / Figma / CAD 中继续编辑
 - **深链**：`?preset=crux&compare=crux,classic&align=ground`
 
 ![Personal Fitting Area](docs/fitting.png)
+
+![Stem Comparison Mode: head tubes aligned, spacer stacks and stems overlaid](docs/stem-comparison.png)
 
 ## 快速开始
 

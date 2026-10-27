@@ -105,7 +105,15 @@ a = atan2(stack, reach)
 Length + Angle and Reach + Stack are two representations of the same stem. The
 UI keeps whichever pair was edited last as the basis; completing a pair fills
 the other pair. `solveFitting()` returns the synced four values and the drawing
-points (stem clamp = head-tube top, stem end, saddle top, crank end).
+points (stem clamp, stem end, saddle top, crank end).
+
+Spacer height raises the stem clamp along the steerer; it does not change the
+stem's own reach/stack:
+
+```
+stem clamp   = headTubeTop + spacerHeight · steererDirection
+spacer band  = [headTubeTop, stem clamp]
+```
 
 Saddle height is measured along the seat tube from the BB center:
 
@@ -114,11 +122,12 @@ seatpost over frame  = saddleHeight − seatTubeLength
 seatpost insert      = seatpostLength − seatpostOverFrame
 ```
 
-Drawing parts: `fit-stem`, `fit-seatpost`, `fit-saddle` (short horizontal
-marker at the saddle top) and `fit-crank` (vertical line down from the BB).
-They are drawn per bike in the bike colour, included in the view-box bounds and
-in the standalone SVG export. Fitting values are stored in templates and
-exported with them; they never feed back into reach / stack / wheelbase.
+Drawing parts: `fit-spacer` (a thick, low-opacity spacer stack), `fit-stem`,
+`fit-seatpost`, `fit-saddle` (short horizontal marker at the saddle top) and
+`fit-crank` (vertical line down from the BB). They are drawn per bike in the
+bike colour, included in the view-box bounds and in the standalone SVG export.
+Fitting values are stored in templates and exported with them; they never feed
+back into reach / stack / wheelbase.
 
 ![Personal fitting overlays and the optional fitting fields](fitting.png)
 
@@ -141,6 +150,14 @@ exported with them; they never feed back into reach / stack / wheelbase.
   difference caused by wheel and tyre size). `render(..., { align: 'ground' })`
   shifts each bike up by its tyre radius; `Render.alignGeometries()` exposes the
   same helper.
+- **Stem compare** — enabled with at least two bikes. `align: 'headtube'`
+  translates every bike so its head-tube top lands on the world origin
+  (`Render.alignGeometries(..., 'headtube')`); fitting points are translated
+  with the frame. When stem/spacer data exists the renderer crops the view box
+  to the head-tube area (`stemFocusBox`) so spacer differences stay readable,
+  and draws a dotted `stem-guide` through the aligned head-tube tops. Spacer
+  stacks are thick low-opacity bands (`fit-spacer`) and the stem starts at the
+  top of the spacer. Hovering `spacerHeight` draws its dimension tag.
 - **Templates** — `Save template` stores the selected bike's inputs (including
   fitting fields) under a name in `localStorage` (key `bikegeo.templates.v1`);
   the Templates dropdown loads one into the selected bike and `×` deletes it.
@@ -152,21 +169,23 @@ exported with them; they never feed back into reach / stack / wheelbase.
   `confirm()`: OK overwrites, Cancel keeps both by adding `(2)`, `(3)`, ….
   The pure format helpers live in `js/templates.js` (schema version 1).
 - **Personal Fitting Area** — optional stem (Length/Angle ⇄ Reach/Stack),
-  Saddle height + Seatpost length (with derived over-frame / insert length) and
-  Crank length. Hovering a fitting row highlights its overlay on every bike;
-  filling values adds them to templates, the compare table and the drawing.
-  They never change frame geometry.
+  Spacer height, Saddle height + Seatpost length (with derived over-frame /
+  insert length) and Crank length. Hovering a fitting row highlights its overlay
+  on every bike; filling values adds them to templates, the compare table and
+  the drawing. They never change frame geometry.
 - **Presets** — Tarmac SL7 Comp '23 (49), CruX Expert '25 (49), Classic road (56),
   650B gravel (47 mm). The preset dropdown applies to the selected bike;
   editing switches it to "Custom".
 - **Deep links** — `?preset=crux`, `?compare=crux,classic`, `?param=stack`,
-  `?view=params|compare`, `?align=ground` (handy for sharing a view and for
-  visual QA).
+  `?param=spacerHeight`, `?view=params|compare`, `?align=ground|stem` (handy for
+  sharing a view and for visual QA).
 - **Export SVG** — downloads the current drawing as a standalone SVG (vector,
   all bikes with their comparison colours, dotted paper included, opens in
   Illustrator/Figma/CAD).
 
 ![On the ground: every bike stands on the wheel-bottom line](ground-alignment.png)
+
+![Stem comparison mode: head tubes aligned, spacer stacks and stems overlaid](stem-comparison.png)
 
 ## Portable templates
 
@@ -234,9 +253,9 @@ node tests/templates.test.js
   (wheelbase, seat tube, steering-axis trail identities), clamping, optional
   fitting conversions / derived seatpost values / fit points.
 - `tests/render.test.js` — scene parts, view box containment (single + multi
-  bike), colour groups, hover highlighting + dimensions, fit overlays, ground
-  alignment shifting, standalone SVG export, "no NaN coordinates", re-render
-  after tuning.
+  bike), colour groups, hover highlighting + dimensions, fit overlays, spacer
+  bands, head-tube alignment and focused stem view, ground alignment shifting,
+  standalone SVG export, "no NaN coordinates", re-render after tuning.
 - `tests/datasource.test.js` — adapter registry contract and reserved adapter.
 - `tests/templates.test.js` — export document shape, import validation,
   round-trip, conflict-name helper and date-stamped file names.
@@ -273,4 +292,5 @@ docs/preview.png    app screenshot used by the docs
 docs/tire-od.png    tire outer-diameter annotation screenshot
 docs/ground-alignment.png  ground-line alignment screenshot
 docs/fitting.png    personal fitting overlays + optional fields screenshot
+docs/stem-comparison.png  stem comparison mode screenshot
 ```

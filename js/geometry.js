@@ -333,6 +333,7 @@
     stemAngle: null,
     stemReach: null,
     stemStack: null,
+    spacerHeight: null,
     saddleHeight: null,
     seatpostLength: null,
     crankLength: null
@@ -343,6 +344,7 @@
     stemAngle: { min: -45, max: 45, step: 0.5 },
     stemReach: { min: 0, max: 250, step: 0.5 },
     stemStack: { min: -150, max: 150, step: 0.5 },
+    spacerHeight: { min: 0, max: 120, step: 1 },
     saddleHeight: { min: 300, max: 1200, step: 1 },
     seatpostLength: { min: 100, max: 600, step: 1 },
     crankLength: { min: 100, max: 250, step: 0.5 }
@@ -360,6 +362,9 @@
     { group: 'stem', key: 'stemStack', label: 'Stem stack', unit: 'mm', precision: 1,
       hint: 'Projection of the stem on the steerer axis',
       parts: ['fit-stem'] },
+    { group: 'stem', key: 'spacerHeight', label: 'Spacer height', unit: 'mm', precision: 1,
+      hint: 'Total spacer stack under the stem. Drawn in a lighter bike tint; the stem sits on top of it.',
+      parts: ['fit-spacer'] },
     { group: 'saddle', key: 'saddleHeight', label: 'Saddle height', unit: 'mm', precision: 1,
       hint: 'BB center to saddle top, measured along the seat tube',
       parts: ['fit-seatpost', 'fit-saddle'] },
@@ -457,7 +462,9 @@
       : null;
 
     var points = {
-      stemClamp: g.htTop,
+      stemClamp: add(g.htTop, scaled(g.steerDir, fitting.spacerHeight || 0)),
+      spacerStart: g.htTop,
+      spacerEnd: (fitting.spacerHeight || 0) > 0 ? add(g.htTop, scaled(g.steerDir, fitting.spacerHeight)) : null,
       stemEnd: null,
       saddleTop: null,
       seatpostTop: g.seatTop,
@@ -490,6 +497,7 @@
       stemAngle: fitting.stemAngle,
       stemReach: fitting.stemReach,
       stemStack: fitting.stemStack,
+      spacerHeight: fitting.spacerHeight,
       saddleHeight: fitting.saddleHeight,
       seatpostLength: fitting.seatpostLength,
       crankLength: fitting.crankLength,
@@ -501,7 +509,7 @@
 
   function hasFittingData(raw) {
     if (!raw) return false;
-    return ['stemLength', 'stemAngle', 'stemReach', 'stemStack',
+    return ['stemLength', 'stemAngle', 'stemReach', 'stemStack', 'spacerHeight',
       'saddleHeight', 'seatpostLength', 'crankLength'].some(function (key) {
       return optionalNumber(raw[key]) !== null;
     });

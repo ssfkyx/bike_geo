@@ -263,12 +263,20 @@ body {
   letter-spacing: .01em;
 }
 
-/* Ground / axle alignment toggle */
-.align-toggle {
+/* Ground / stem comparison alignment actions */
+.stage-actions {
   position: absolute;
   right: 14px;
   bottom: 14px;
   z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: calc(100% - 28px);
+}
+
+.align-toggle {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -288,6 +296,11 @@ body {
 .align-toggle:hover {
   color: var(--ink-2);
   border-color: var(--line-strong);
+}
+
+.align-toggle:disabled {
+  opacity: .42;
+  cursor: not-allowed;
 }
 
 .align-toggle:focus-visible {
@@ -1041,13 +1054,30 @@ input[type="number"]:focus {
 /* Personal fitting overlays: thin stem/seatpost/crank, slightly bolder saddle */
 #drawing .part.fit { stroke-width: 1.6px; opacity: .82; }
 #drawing .part.fit.saddle { stroke-width: 2.4px; opacity: .92; }
+#drawing .part.fit.spacer {
+  stroke-width: 8px;
+  opacity: .3;
+  stroke-linecap: butt;
+}
+#drawing .part.fit.spacer.is-active {
+  stroke-width: 12px;
+  opacity: .55;
+}
 
 #drawing .part.is-active { stroke-width: 4.2px; }
 
 /* Hover focus: fade everything except the related lines, on every bike. */
 #drawing.is-inspecting .part { opacity: .32; }
 #drawing.is-inspecting .part.is-active { opacity: 1; }
+#drawing.is-inspecting .part.fit.spacer.is-active { opacity: .55; }
 #drawing.is-inspecting .part.tire.is-active { fill-opacity: .30; }
+
+/* Stem comparison: thin guide through the aligned head-tube tops. */
+#drawing .stem-guide {
+  stroke: #c7d0da;
+  stroke-width: 1px;
+  stroke-dasharray: 6 8;
+}
 
 #drawing .dim-line {
   fill: none;
@@ -1181,11 +1211,18 @@ input[type="number"]:focus {
       </div>
       <div class="stage-badge" id="stage-badge">700C / 29" · 26 mm</div>
 
-      <button id="align-toggle" class="align-toggle" type="button" aria-pressed="false"
-              title="Bikes are aligned by the rear axle — click to stand them on the ground line">
-        <span class="align-toggle-dot" aria-hidden="true"></span>
-        On the ground
-      </button>
+      <div class="stage-actions">
+        <button id="align-toggle" class="align-toggle" type="button" aria-pressed="false"
+                title="Bikes are aligned by the rear axle — click to stand them on the ground line">
+          <span class="align-toggle-dot" aria-hidden="true"></span>
+          On the ground
+        </button>
+        <button id="stem-compare" class="align-toggle" type="button" aria-pressed="false" disabled
+                title="Add a second bike to compare stems and spacers">
+          <span class="align-toggle-dot" aria-hidden="true"></span>
+          Stem compare
+        </button>
+      </div>
     </section>
 
     <aside class="panel" aria-label="Geometry parameters">
@@ -1621,6 +1658,7 @@ input[type="number"]:focus {
     stemAngle: null,
     stemReach: null,
     stemStack: null,
+    spacerHeight: null,
     saddleHeight: null,
     seatpostLength: null,
     crankLength: null
@@ -1631,6 +1669,7 @@ input[type="number"]:focus {
     stemAngle: { min: -45, max: 45, step: 0.5 },
     stemReach: { min: 0, max: 250, step: 0.5 },
     stemStack: { min: -150, max: 150, step: 0.5 },
+    spacerHeight: { min: 0, max: 120, step: 1 },
     saddleHeight: { min: 300, max: 1200, step: 1 },
     seatpostLength: { min: 100, max: 600, step: 1 },
     crankLength: { min: 100, max: 250, step: 0.5 }
@@ -1648,6 +1687,9 @@ input[type="number"]:focus {
     { group: 'stem', key: 'stemStack', label: 'Stem stack', unit: 'mm', precision: 1,
       hint: 'Projection of the stem on the steerer axis',
       parts: ['fit-stem'] },
+    { group: 'stem', key: 'spacerHeight', label: 'Spacer height', unit: 'mm', precision: 1,
+      hint: 'Total spacer stack under the stem. Drawn in a lighter bike tint; the stem sits on top of it.',
+      parts: ['fit-spacer'] },
     { group: 'saddle', key: 'saddleHeight', label: 'Saddle height', unit: 'mm', precision: 1,
       hint: 'BB center to saddle top, measured along the seat tube',
       parts: ['fit-seatpost', 'fit-saddle'] },
@@ -1745,7 +1787,9 @@ input[type="number"]:focus {
       : null;
 
     var points = {
-      stemClamp: g.htTop,
+      stemClamp: add(g.htTop, scaled(g.steerDir, fitting.spacerHeight || 0)),
+      spacerStart: g.htTop,
+      spacerEnd: (fitting.spacerHeight || 0) > 0 ? add(g.htTop, scaled(g.steerDir, fitting.spacerHeight)) : null,
       stemEnd: null,
       saddleTop: null,
       seatpostTop: g.seatTop,
@@ -1778,6 +1822,7 @@ input[type="number"]:focus {
       stemAngle: fitting.stemAngle,
       stemReach: fitting.stemReach,
       stemStack: fitting.stemStack,
+      spacerHeight: fitting.spacerHeight,
       saddleHeight: fitting.saddleHeight,
       seatpostLength: fitting.seatpostLength,
       crankLength: fitting.crankLength,
@@ -1789,7 +1834,7 @@ input[type="number"]:focus {
 
   function hasFittingData(raw) {
     if (!raw) return false;
-    return ['stemLength', 'stemAngle', 'stemReach', 'stemStack',
+    return ['stemLength', 'stemAngle', 'stemReach', 'stemStack', 'spacerHeight',
       'saddleHeight', 'seatpostLength', 'crankLength'].some(function (key) {
       return optionalNumber(raw[key]) !== null;
     });
@@ -1941,9 +1986,11 @@ input[type="number"]:focus {
    * overlay axle-to-axle. "ground" mode shifts each bike up by its tyre radius
    * so every bike stands on the same ground line instead.
    * ------------------------------------------------------------------ */
-  function shiftGeometry(g, dy) {
-    if (!dy) return g;
-    function moved(point) { return { x: point.x, y: point.y + dy }; }
+  function translateGeometry(g, dx, dy) {
+    dx = dx || 0;
+    dy = dy || 0;
+    if (!dx && !dy) return g;
+    function moved(point) { return { x: point.x + dx, y: point.y + dy }; }
     var shifted = Object.assign({}, g);
     shifted.rearAxle = moved(g.rearAxle);
     shifted.frontAxle = moved(g.frontAxle);
@@ -1961,23 +2008,32 @@ input[type="number"]:focus {
     return shifted;
   }
 
+  function shiftGeometry(g, dy) {
+    return translateGeometry(g, 0, dy);
+  }
+
   function alignGeometries(input, align) {
     var bikes = Array.isArray(input) ? input : [input];
-    var mode = align === 'ground' ? 'ground' : 'axle';
+    var mode = align === 'ground' ? 'ground'
+      : ((align === 'headtube' || align === 'stem') ? 'headtube' : 'axle');
     return bikes.map(function (g) {
-      return mode === 'ground' ? shiftGeometry(g, g.tireRadius) : g;
+      if (mode === 'ground') return shiftGeometry(g, g.tireRadius);
+      if (mode === 'headtube') return translateGeometry(g, -g.htTop.x, -g.htTop.y);
+      return g;
     });
   }
 
   /* ------------------------------------------------------------------ *
    * Personal fitting parts (optional stem / saddle / crank overlays)
    * ------------------------------------------------------------------ */
-  function shiftFitting(fitting, dy) {
-    if (!fitting || !fitting.points || !dy) return fitting;
-    function moved(point) { return point ? { x: point.x, y: point.y + dy } : null; }
+  function translateFitting(fitting, dx, dy) {
+    if (!fitting || !fitting.points || (!dx && !dy)) return fitting;
+    function moved(point) { return point ? { x: point.x + dx, y: point.y + dy } : null; }
     var shifted = Object.assign({}, fitting);
     shifted.points = {
       stemClamp: moved(fitting.points.stemClamp),
+      spacerStart: moved(fitting.points.spacerStart),
+      spacerEnd: moved(fitting.points.spacerEnd),
       stemEnd: moved(fitting.points.stemEnd),
       saddleTop: moved(fitting.points.saddleTop),
       seatpostTop: moved(fitting.points.seatpostTop),
@@ -1986,11 +2042,23 @@ input[type="number"]:focus {
     return shifted;
   }
 
+  function shiftFitting(fitting, dy) {
+    return translateFitting(fitting, 0, dy);
+  }
+
   function buildFittingParts(g, fitting) {
     if (!fitting || !fitting.points) return [];
     var points = fitting.points;
     var parts = [];
 
+    // Spacer stack sits between the head-tube top and the stem clamp. It is
+    // drawn first and in a lighter tint so the stem reads as stacked on top.
+    if (points.spacerEnd && fitting.spacerHeight > 0) {
+      parts.push({
+        id: 'fit-spacer', type: 'line',
+        a: points.spacerStart, b: points.spacerEnd, cls: 'part fit spacer'
+      });
+    }
     if (points.stemEnd) {
       parts.push({
         id: 'fit-stem', type: 'line',
@@ -2023,8 +2091,43 @@ input[type="number"]:focus {
   function fittingPoints(fitting) {
     if (!fitting || !fitting.points) return [];
     var points = fitting.points;
-    return [points.stemClamp, points.stemEnd, points.saddleTop,
-      points.seatpostTop, points.crankEnd].filter(Boolean);
+    return [points.spacerStart, points.spacerEnd, points.stemClamp, points.stemEnd,
+      points.saddleTop, points.seatpostTop, points.crankEnd].filter(Boolean);
+  }
+
+  /* Stem comparison crops the view to the head tube / spacer / stem area so
+   * small spacer differences stay readable while the head tubes are aligned. */
+  function stemFocusBox(points) {
+    var minX = Infinity;
+    var maxX = -Infinity;
+    var minScreenY = Infinity;
+    var maxScreenY = -Infinity;
+    points.forEach(function (point) {
+      if (!point) return;
+      minX = Math.min(minX, point.x);
+      maxX = Math.max(maxX, point.x);
+      minScreenY = Math.min(minScreenY, -point.y);
+      maxScreenY = Math.max(maxScreenY, -point.y);
+    });
+    if (!isFinite(minX)) return null;
+
+    var left = minX - 240;
+    var right = maxX + 240;
+    var top = minScreenY - 140;
+    var bottom = maxScreenY + 150;
+    var minWidth = 780;
+    var minHeight = 540;
+    if (right - left < minWidth) {
+      var cx = (left + right) / 2;
+      left = cx - minWidth / 2;
+      right = cx + minWidth / 2;
+    }
+    if (bottom - top < minHeight) {
+      var cy = (top + bottom) / 2;
+      top = cy - minHeight / 2;
+      bottom = cy + minHeight / 2;
+    }
+    return { x: left, y: top, w: right - left, h: bottom - top };
   }
 
   /* ------------------------------------------------------------------ *
@@ -2041,8 +2144,8 @@ input[type="number"]:focus {
 
     bikes.forEach(function (g) {
       var R = g.tireRadius;
-      minX = Math.min(minX, -R);
-      maxX = Math.max(maxX, g.frontAxle.x + R);
+      minX = Math.min(minX, g.rearAxle.x - R, g.frontAxle.x - R);
+      maxX = Math.max(maxX, g.rearAxle.x + R, g.frontAxle.x + R);
       // Highest content (screen y grows downwards): wheel tops and frame tops.
       minScreenY = Math.min(minScreenY,
         -(g.rearAxle.y + R),
@@ -2197,7 +2300,7 @@ input[type="number"]:focus {
   /* ------------------------------------------------------------------ *
    * Annotations per parameter key
    * ------------------------------------------------------------------ */
-  function annotationFor(key, g, ctx) {
+  function annotationFor(key, g, ctx, fitting) {
     var P = ctx.P;
     var R = g.tireRadius;
     var bb = P(g.bb);
@@ -2211,6 +2314,17 @@ input[type="number"]:focus {
     var hta = g.input.headTubeAngle * Math.PI / 180;
 
     switch (key) {
+      case 'spacerHeight': {
+        if (!fitting || !fitting.points || !fitting.points.spacerEnd) return [];
+        var spacerStart = P(fitting.points.spacerStart);
+        var spacerEnd = P(fitting.points.spacerEnd);
+        return [line(spacerStart, spacerEnd, 'dim-line')].concat(
+          tag(ctx, [(spacerStart[0] + spacerEnd[0]) / 2 + ctx.fs * 1.4,
+            (spacerStart[1] + spacerEnd[1]) / 2],
+            'Spacer ' + fmt(fitting.spacerHeight, 1) + ' mm', 'start')
+        );
+      }
+
       case 'wheelbase':
         return dim(ctx, [rear[0], groundScreen], [front[0], groundScreen], 72,
           fmt(g.wheelbase, 1) + ' mm');
@@ -2409,12 +2523,20 @@ input[type="number"]:focus {
     var source = options.bikes || [];
     if (!source.length) return null;
 
-    var align = options.align === 'ground' ? 'ground' : 'axle';
+    var align = options.align === 'ground' ? 'ground'
+      : ((options.align === 'headtube' || options.align === 'stem') ? 'headtube' : 'axle');
     var entries = source.map(function (entry) {
-      var dy = align === 'ground' ? entry.g.tireRadius : 0;
+      var dx = 0;
+      var dy = 0;
+      if (align === 'ground') {
+        dy = entry.g.tireRadius;
+      } else if (align === 'headtube') {
+        dx = -entry.g.htTop.x;
+        dy = -entry.g.htTop.y;
+      }
       return {
-        g: dy ? shiftGeometry(entry.g, dy) : entry.g,
-        fitting: dy ? shiftFitting(entry.fitting, dy) : entry.fitting,
+        g: (dx || dy) ? translateGeometry(entry.g, dx, dy) : entry.g,
+        fitting: translateFitting(entry.fitting, dx, dy),
         colorIndex: entry.colorIndex,
         selected: entry.selected
       };
@@ -2426,6 +2548,26 @@ input[type="number"]:focus {
       extraPoints = extraPoints.concat(fittingPoints(entry.fitting));
     });
     var box = viewBoxFor(geometries, extraPoints);
+    var stemDetail = false;
+
+    if (align === 'headtube') {
+      var focusPoints = [];
+      var hasStemFocus = false;
+      entries.forEach(function (entry) {
+        focusPoints.push(entry.g.htTop, entry.g.htBottom);
+        var points = entry.fitting && entry.fitting.points;
+        if (points) {
+          if (points.stemEnd || points.spacerEnd) hasStemFocus = true;
+          focusPoints.push(points.spacerStart, points.spacerEnd,
+            points.stemClamp, points.stemEnd);
+        }
+      });
+      if (hasStemFocus) {
+        var focusBox = stemFocusBox(focusPoints);
+        if (focusBox) box = focusBox;
+        stemDetail = true;
+      }
+    }
 
     var selected = entries.filter(function (entry) { return entry.selected; })[0] || entries[0];
     var ctx = makeContext(selected.g, box);
@@ -2448,14 +2590,27 @@ input[type="number"]:focus {
     });
     var scene = order.map(function (entry) {
       var cls = 'bike bike-' + entry.colorIndex + (entry.selected ? ' is-selected' : '');
+      var frameParts = buildParts(entry.g);
+      var fittingParts = buildFittingParts(entry.g, entry.fitting);
+      if (stemDetail) {
+        // Stem comparison is a detail view: head tubes, spacers and stems only.
+        frameParts = frameParts.filter(function (part) { return part.id === 'headtube'; });
+        fittingParts = fittingParts.filter(function (part) {
+          return part.id === 'fit-spacer' || part.id === 'fit-stem';
+        });
+      }
       return '<g class="' + cls + '">' +
-        serializeParts(buildParts(entry.g), activeParts) +
-        serializeParts(buildFittingParts(entry.g, entry.fitting), activeParts) +
+        serializeParts(frameParts, activeParts) +
+        serializeParts(fittingParts, activeParts) +
         '</g>';
     }).join('');
+    if (align === 'headtube') {
+      scene = '<line class="stem-guide" x1="' + n(box.x) + '" y1="0"' +
+        ' x2="' + n(box.x + box.w) + '" y2="0"/>' + scene;
+    }
 
     var annotations = (options.showAnnotation !== false && param)
-      ? annotationFor(options.activeKey, selected.g, ctx)
+      ? annotationFor(options.activeKey, selected.g, ctx, selected.fitting)
       : [];
 
     if (options.activeKey) {
@@ -2484,7 +2639,10 @@ input[type="number"]:focus {
     '.part.ground{stroke:var(--bike,#111827);stroke-width:1.1px;stroke-dasharray:9 9;opacity:.5}',
     '.part.fit{stroke-width:1.6px;opacity:.82}',
     '.part.fit.saddle{stroke-width:2.4px;opacity:.92}',
+    '.part.fit.spacer{stroke-width:8px;opacity:.3;stroke-linecap:butt}',
+    '.part.fit.spacer.is-active{stroke-width:12px;opacity:.55}',
     '.part.is-active{stroke-width:4.2px}',
+    '.stem-guide{stroke:#c7d0da;stroke-width:1px;stroke-dasharray:6 8}',
     'text{font-family:ui-monospace,Consolas,monospace}',
     '.dim-line{fill:none;stroke:#d9480f;stroke-width:1.2px}',
     '.dim-ext{fill:none;stroke:#c2cad4;stroke-width:1px;stroke-dasharray:5 5}',
@@ -2522,6 +2680,9 @@ input[type="number"]:focus {
     standaloneSvg: standaloneSvg,
     alignGeometries: alignGeometries,
     shiftGeometry: shiftGeometry,
+    translateGeometry: translateGeometry,
+    translateFitting: translateFitting,
+    shiftFitting: shiftFitting,
     fmt: fmt,
     makeContext: makeContext,
     BIKE_COLORS: BIKE_COLORS
@@ -2801,6 +2962,7 @@ input[type="number"]:focus {
     compareTable: document.getElementById('compare-table'),
     compareCount: document.getElementById('compare-count'),
     alignToggle: document.getElementById('align-toggle'),
+    stemCompare: document.getElementById('stem-compare'),
     templateSave: document.getElementById('template-save'),
     templateSelect: document.getElementById('template-select'),
     templateDelete: document.getElementById('template-delete'),
@@ -2817,7 +2979,7 @@ input[type="number"]:focus {
     selected: 0,
     activeKey: null,
     view: 'params',
-    grounded: false,
+    align: 'axle',
     box: null,
     rowByKey: Object.create(null),
     fittingRefs: Object.create(null),
@@ -2936,7 +3098,7 @@ input[type="number"]:focus {
       bikes: entries,
       activeKey: state.activeKey,
       showAnnotation: state.view === 'params',
-      align: state.grounded ? 'ground' : 'axle'
+      align: state.align
     });
     if (result) state.box = result.box;
   }
@@ -3022,12 +3184,23 @@ input[type="number"]:focus {
       Render.fmt(g.tireOuterDiameter, 1) + ' mm';
   }
 
-  function updateAlignButton() {
-    el.alignToggle.setAttribute('aria-pressed', state.grounded ? 'true' : 'false');
-    el.alignToggle.classList.toggle('is-on', state.grounded);
-    el.alignToggle.title = state.grounded
+  function updateAlignButtons() {
+    var groundOn = state.align === 'ground';
+    var stemOn = state.align === 'headtube';
+    el.alignToggle.setAttribute('aria-pressed', groundOn ? 'true' : 'false');
+    el.alignToggle.classList.toggle('is-on', groundOn);
+    el.alignToggle.title = groundOn
       ? 'Bikes stand on the ground line — click to align by the rear axle'
       : 'Bikes are aligned by the rear axle — click to stand them on the ground line';
+
+    el.stemCompare.disabled = state.bikes.length < 2;
+    el.stemCompare.setAttribute('aria-pressed', stemOn ? 'true' : 'false');
+    el.stemCompare.classList.toggle('is-on', stemOn);
+    el.stemCompare.title = state.bikes.length < 2
+      ? 'Add a second bike to compare stems and spacers'
+      : (stemOn
+        ? 'Head tubes aligned — click to return to rear-axle alignment'
+        : 'Stem comparison mode: align bikes by the head-tube top and compare spacers/stems');
   }
 
   function updateRowStates() {
@@ -3169,6 +3342,7 @@ input[type="number"]:focus {
   }
 
   function apply() {
+    if (state.bikes.length < 2 && state.align === 'headtube') state.align = 'axle';
     state.solved = state.bikes.map(function (bike) { return Geo.solve(bike.inputs); });
     solveFittingAll();
     updateView();
@@ -3182,6 +3356,7 @@ input[type="number"]:focus {
     syncPresetSelect();
     syncFittingInputs();
     updateRowStates();
+    updateAlignButtons();
   }
 
   /* ------------------------------------------------------------------ *
@@ -3757,10 +3932,23 @@ input[type="number"]:focus {
     el.addBike.addEventListener('click', addBike);
 
     el.alignToggle.addEventListener('click', function () {
-      state.grounded = !state.grounded;
-      updateAlignButton();
+      state.align = state.align === 'ground' ? 'axle' : 'ground';
+      updateAlignButtons();
       renderDrawing();
-      toast(state.grounded ? 'Aligned by the ground line' : 'Aligned by the rear axle');
+      toast(state.align === 'ground' ? 'Aligned by the ground line' : 'Aligned by the rear axle');
+    });
+
+    el.stemCompare.addEventListener('click', function () {
+      if (state.bikes.length < 2) return;
+      state.align = state.align === 'headtube' ? 'axle' : 'headtube';
+      if (state.align === 'headtube') state.view = 'params';
+      state.activeKey = null;
+      updateView();
+      updateAlignButtons();
+      renderDrawing();
+      toast(state.align === 'headtube'
+        ? 'Stem comparison: head tubes aligned'
+        : 'Aligned by the rear axle');
     });
 
     el.templateSave.addEventListener('click', saveTemplate);
@@ -3841,9 +4029,14 @@ input[type="number"]:focus {
     if (view === 'compare' && state.bikes.length > 1) state.view = 'compare';
     if (view === 'params') state.view = 'params';
 
-    if (params.get('align') === 'ground') state.grounded = true;
+    var alignParam = params.get('align');
+    if (alignParam === 'ground') {
+      state.align = 'ground';
+    } else if (alignParam === 'stem' || alignParam === 'headtube') {
+      state.align = state.bikes.length > 1 ? 'headtube' : 'axle';
+    }
 
-    updateAlignButton();
+    updateAlignButtons();
     apply();
 
     var activeKey = params.get('param');

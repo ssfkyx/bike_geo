@@ -88,6 +88,7 @@ async function main() {
       tabs: document.querySelectorAll('.bike-tab').length,
       addDisabled: document.getElementById('add-bike').disabled,
       compareDisabled: document.getElementById('view-compare').disabled,
+      stemCompareDisabled: document.getElementById('stem-compare').disabled,
       preset: document.getElementById('preset-select').value,
       frontCenterField: document.getElementById('field-frontCenter').value,
       ett: document.querySelector('.computed-row[data-key="effectiveTopTube"] .value').textContent,
@@ -97,13 +98,14 @@ async function main() {
       legendHidden: document.getElementById('bike-legend').hidden
     };
   })()`);
-  check('initial rows', initial.rows, 32);
+  check('initial rows', initial.rows, 33);
   check('initial inputs', initial.inputs, 11);
   check('initial computed', initial.computed, 12);
-  check('initial fitting rows', initial.fitRows, 9);
-  check('initial fitting inputs', initial.fitInputs, 7);
+  check('initial fitting rows', initial.fitRows, 10);
+  check('initial fitting inputs', initial.fitInputs, 8);
   check('initial fitting outputs', initial.fitOutputs, 2);
   check('fitting starts blank', initial.fitDerived, ['\u2014', '\u2014']);
+  check('stem comparison needs two bikes', initial.stemCompareDisabled, true);
   check('initial scene parts', initial.parts, 17);
   check('no fitting overlay when blank', initial.fitParts, 0);
   check('initial tyre bands', initial.tireBands, 2);
@@ -454,6 +456,7 @@ async function main() {
       hasFittingRows: !!document.querySelector('.cmp-row[data-key="stemLength"]'),
       fittingCells: Array.from(document.querySelectorAll('.cmp-row[data-key="stemLength"] .cmp-cell'))
         .map((el) => el.textContent.trim()),
+      stemCompareDisabled: document.getElementById('stem-compare').disabled,
       compareRows: document.querySelectorAll('.cmp-row[data-key]').length
     };
   })()`);
@@ -466,11 +469,12 @@ async function main() {
   check('compare tab label', added.compareLabel, 'Compare (2)');
   check('compare tab enabled', added.compareDisabled, false);
   check('legend appears with two bikes', [added.legendHidden, added.legendItems], [false, 2]);
-  check('compare table has every parameter', added.compareRows, 32);
+  check('compare table has every parameter', added.compareRows, 33);
   check('compare stack values and delta', added.stackCells, added.expectedStackCells);
   check('compare tire outer diameter values', added.odCells, ['698.0', '674.0-24.0']);
   check('compare shows fitted data when present', added.hasFittingRows, true);
   check('compare shows blanks for unfitted bikes', added.fittingCells, ['121.7', '\u2014']);
+  check('stem comparison becomes available with two bikes', added.stemCompareDisabled, false);
 
   const compareHover = await evaluate(`(function () {
     const row = document.querySelector('.cmp-row[data-key="stack"]');
@@ -511,6 +515,92 @@ async function main() {
   check('compare fitting values and delta', compareFitting.cells, ['121.7', '100.0-21.7']);
   check('hovering a fitting row highlights every bike', compareFitting.activeCount, 2);
   check('fitting hover highlights the stem overlays', compareFitting.allStem, true);
+
+  /* ---------------------------------------------------------------- *
+   * 3b. Stem comparison mode: head tubes aligned + spacer stack
+   * ---------------------------------------------------------------- */
+  const stemMode = await evaluate(`(function () {
+    const setFit = (key, value) => {
+      const input = document.getElementById('fit-' + key);
+      input.value = String(value);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    setFit('spacerHeight', 40);                       // bike B was selected
+    document.querySelectorAll('.bike-tab')[0].click(); // bike A
+    setFit('spacerHeight', 20);
+
+    const button = document.getElementById('stem-compare');
+    button.click();
+    const pressedOn = button.getAttribute('aria-pressed');
+    const activeOn = button.classList.contains('is-on');
+    const groups = Array.from(document.querySelectorAll('#drawing .bike'));
+    const headTubeTop = (group) => {
+      const line = group.querySelector('[data-part="headtube"]');
+      return Math.min(Number(line.getAttribute('y1')), Number(line.getAttribute('y2')));
+    };
+    const spacerOf = (index) =>
+      document.querySelector('#drawing .bike-' + index + ' [data-part="fit-spacer"]');
+    const stemOf = (index) =>
+      document.querySelector('#drawing .bike-' + index + ' [data-part="fit-stem"]');
+    const spacerLength = (index) => {
+      const line = spacerOf(index);
+      return Math.hypot(Number(line.getAttribute('x2')) - Number(line.getAttribute('x1')),
+        Number(line.getAttribute('y2')) - Number(line.getAttribute('y1')));
+    };
+    const topsBefore = groups.map(headTubeTop);
+    const spacerA = spacerOf(0);
+    const spacerStyle = spacerA ? getComputedStyle(spacerA) : null;
+    const spacerOpacity = spacerStyle ? spacerStyle.opacity : null;
+    const spacerWidth = spacerStyle ? spacerStyle.strokeWidth : null;
+    const spacerRatio = spacerLength(1) / spacerLength(0);
+    const spacerCount = document.querySelectorAll('#drawing [data-part="fit-spacer"]').length;
+    const join = [0, 1].map((index) => {
+      const spacer = spacerOf(index);
+      const stem = stemOf(index);
+      return {
+        stemAtSpacerTop: !!spacer && !!stem &&
+          stem.getAttribute('x1') === spacer.getAttribute('x2') &&
+          stem.getAttribute('y1') === spacer.getAttribute('y2')
+      };
+    });
+
+    const row = document.querySelector('.fit-row[data-key="spacerHeight"]');
+    row.dispatchEvent(new MouseEvent('mouseenter'));
+    const annotation = document.querySelector('#drawing .annotations').innerHTML;
+    const active = Array.from(document.querySelectorAll('#drawing .part.is-active'))
+      .map((el) => el.getAttribute('data-part')).sort();
+    row.dispatchEvent(new MouseEvent('mouseleave'));
+
+    button.click(); // back to rear-axle alignment
+    const topsAfter = Array.from(document.querySelectorAll('#drawing .bike'))
+      .map((group) => headTubeTop(group));
+    return {
+      pressedOn: pressedOn,
+      activeOn: activeOn,
+      topsBefore: topsBefore,
+      aligned: Math.abs(topsBefore[0] - topsBefore[1]) < 1e-9,
+      spacerCount: spacerCount,
+      spacerOpacity: spacerOpacity,
+      spacerWidth: spacerWidth,
+      spacerRatio: spacerRatio,
+      join: join,
+      annotationHasSpacer: annotation.includes('Spacer 20.0 mm'),
+      activeParts: active,
+      pressedAfter: button.getAttribute('aria-pressed'),
+      axleGap: Math.abs(topsAfter[0] - topsAfter[1])
+    };
+  })()`);
+  check('stem comparison toggles on', [stemMode.pressedOn, stemMode.activeOn], ['true', true]);
+  check('head tube tops are aligned', stemMode.aligned, true);
+  check('both spacer stacks are drawn', stemMode.spacerCount, 2);
+  check('spacer uses a lighter tint', stemMode.spacerOpacity, '0.3');
+  check('spacer band is wide', stemMode.spacerWidth, '8px');
+  check('spacer height ratio follows the values', stemMode.spacerRatio > 1.8 && stemMode.spacerRatio < 2.2, true);
+  check('stem sits on top of the spacer', stemMode.join.map((j) => j.stemAtSpacerTop), [true, true]);
+  check('hovering spacer height draws its dimension', stemMode.annotationHasSpacer, true);
+  check('spacer hover highlights both bands', stemMode.activeParts, ['fit-spacer', 'fit-spacer']);
+  check('stem comparison toggles off', stemMode.pressedAfter, 'false');
+  check('rear-axle alignment restores head tube gap', stemMode.axleGap > 0.5, true);
 
   /* ---------------------------------------------------------------- *
    * 4. Edit bike B while bike A stays untouched

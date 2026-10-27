@@ -11,8 +11,9 @@ Compensated 区列出全部自动补全值。顶部 Preset 可载入内置车型
 Custom。可将当前车的输入用 Save template 存成命名模板（本机浏览器保存），之后从模板
 下拉框载入；模板栏下方的 Export templates 可把全部模板导出为 JSON，Import templates
 用于在新设备/新浏览器导入恢复。Personal Fitting Area 为可选的把立、坐高/座管、牙盘
-数据，留空不参与绘图。需要保存图时使用 Export SVG 导出矢量图。也支持 URL 参数快速打开
-指定视图（如 ?compare=crux,classic 或 ?align=ground），便于分享与复核。
+数据，留空不参与绘图；填充 Stem 与 Spacer Height 后可用画布右下角的 Stem compare
+进入头管对齐对比模式。需要保存图时使用 Export SVG 导出矢量图。也支持 URL 参数快速打开
+指定视图（如 ?compare=crux,classic、?align=ground 或 ?align=stem），便于分享与复核。
 
 主要功能
 
@@ -30,6 +31,8 @@ Custom。可将当前车的输入用 Save template 存成命名模板（本机�
 
 4. 对齐基线：默认按后轴对齐叠画，便于比较车架几何；画布右下角 On the ground 按钮可
    切换为按车轮最低线（地面线）对齐，用于呈现不同轮径/胎宽造成的五通高度与整车高度差异。
+   Stem compare 按钮进入 Stem Comparison Mode：两车按头管顶端对齐，视图放大到头管/
+   垫圈/把立区域，便于比较把立与垫圈叠加关系。
 
 5. 模板：点 Save template 给当前车的全部输入起名保存（保存在本机浏览器，不上传），
    之后从 Templates 下拉框选择即可载入，右侧 × 删除；A/B/C 可分别保存不同模板。
@@ -39,12 +42,17 @@ Custom。可将当前车的输入用 Save template 存成命名模板（本机�
    改名保留两份。适合换设备、备份或团队共享设定。
 
 7. 个人设定（Personal Fitting Area，可选）：把立 Length / Angle / Reach / Stack
-   四个可输入量双向换算（前两个与后两个等价）；Saddle Height、Seatpost Length
-   输入后自动派生 Seatpost Over Frame 与 Seatpost Insert Length；Crank Length
-   从中轴向下绘制垂线。全部字段可留空，不改变车架几何结果，仅在填写后叠加绘制
-   并进入对比表。
+   四个可输入量双向换算（前两个与后两个等价）；Spacer Height 表示垫圈总高度，
+   Saddle Height、Seatpost Length 输入后自动派生 Seatpost Over Frame 与
+   Seatpost Insert Length；Crank Length 从中轴向下绘制垂线。全部字段可留空，
+   不改变车架几何结果，仅在填写后叠加绘制并进入对比表。
 
-8. 导出：当前画布可导出为独立 SVG，包含各车颜色、点阵纸与标注，可在 Illustrator、
+8. Stem Comparison Mode：有 2 台以上车时可用。点击画布右下角 Stem compare，两台车按
+   头管顶端对齐并放大到头管区域；Spacer Height 以当前车颜色更淡的色带绘制，把立从
+   垫圈顶端出发叠加在上方；悬停 Spacer Height 行可显示垫圈高度尺寸。再次点击恢复
+   后轴对齐。
+
+9. 导出：当前画布可导出为独立 SVG，包含各车颜色、点阵纸与标注，可在 Illustrator、
    Figma 或 CAD 中继续编辑。
 
 个人设定计算口径
@@ -56,6 +64,9 @@ Reach + Stack 可还原 Length = √(Reach² + Stack²) 与 Angle = atan2(Stack,
 坐高沿立管从五通中心量到坐垫顶面。Seatpost Over Frame = Saddle Height − Seat Tube
 Length；Seatpost Insert Length = Seatpost Length − Seatpost Over Frame。两个结果只读，
 负值会以橙色提示组合不成立。
+
+Spacer Height 为头管顶端到把立之间的垫圈总高度：在画布上沿舵管绘制为该车颜色的
+淡色带，把立起点相应上移；Stem Reach / Stack 仍以把立自身起点为基准，不含垫圈高度。
 
 轮径计算逻辑
 

@@ -288,6 +288,32 @@ test('personal fitting is optional and tolerates partial input', () => {
   assert.equal(Geo.hasFittingData({}), false);
 });
 
+test('spacer height raises the stem clamp and keeps the stem geometry', () => {
+  const g = Geo.solve(TARMAC);
+  const base = Geo.solveFitting({ stemLength: 100, stemAngle: 6 }, g);
+  const spaced = Geo.solveFitting({ stemLength: 100, stemAngle: 6, spacerHeight: 20 }, g);
+
+  near(Geo.dist(spaced.points.spacerStart, spaced.points.spacerEnd), 20, 1e-9, 'spacer stack height');
+  near(Geo.dist(base.points.stemClamp, spaced.points.stemClamp), 20, 1e-9, 'stem clamp moves up');
+  near(spaced.stemLength, base.stemLength, 1e-9, 'stem length unchanged');
+  near(spaced.stemReach, base.stemReach, 1e-9, 'stem reach unchanged');
+  near(spaced.stemStack, base.stemStack, 1e-9, 'stem stack unchanged');
+  near(spaced.points.stemEnd.x - base.points.stemEnd.x,
+    spaced.points.stemClamp.x - base.points.stemClamp.x, 1e-9, 'stem end follows clamp (x)');
+  near(spaced.points.stemEnd.y - base.points.stemEnd.y,
+    spaced.points.stemClamp.y - base.points.stemClamp.y, 1e-9, 'stem end follows clamp (y)');
+
+  const none = Geo.solveFitting({ stemLength: 100, stemAngle: 6 }, g);
+  assert.equal(none.points.spacerEnd, null, 'no spacer band without a value');
+  const spacerOnly = Geo.solveFitting({ spacerHeight: 15 }, g);
+  assert.equal(spacerOnly.points.stemEnd, null, 'a spacer alone draws no stem');
+  near(Geo.dist(spacerOnly.points.spacerStart, spacerOnly.points.spacerEnd), 15, 1e-9);
+
+  assert.equal(Geo.hasFittingData({ spacerHeight: 15 }), true);
+  const clamped = Geo.solveFitting({ spacerHeight: 999 }, g);
+  assert.equal(clamped.spacerHeight, Geo.FITTING_RULES.spacerHeight.max);
+});
+
 test('fitting fields all carry labels, units and highlight parts', () => {
   const keys = Geo.FITTING_FIELDS.map(f => f.key);
   assert.equal(new Set(keys).size, keys.length, 'no duplicate fit keys');
@@ -297,4 +323,8 @@ test('fitting fields all carry labels, units and highlight parts', () => {
   }
   const derived = Geo.FITTING_FIELDS.filter(f => f.derived).map(f => f.key);
   assert.deepEqual(derived, ['seatpostOverFrame', 'seatpostInsertLength']);
+
+  const spacer = Geo.FITTING_FIELDS.filter(f => f.key === 'spacerHeight')[0];
+  assert.ok(spacer && !spacer.derived, 'spacer height is an optional input');
+  assert.deepEqual(spacer.parts, ['fit-spacer']);
 });

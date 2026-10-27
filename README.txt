@@ -28,6 +28,7 @@ Bike Geo 是一个打开即用的单页网页工具。
   · 输入可存成命名模板（保存在本机浏览器），随时载入 / 删除
   · 模板可导出为 JSON / 导入，换设备、换浏览器、重开也能恢复
   · Personal Fitting Area：可选记录把立、坐高/座管、牙盘数据并叠加绘制
+  · Stem Comparison Mode：按头管顶端对齐两车，放大比较垫圈与把立
   · 可导出矢量 SVG（含各车颜色与点阵纸），可进 Illustrator / Figma / CAD
 
 
@@ -86,6 +87,13 @@ Windows / macOS：
    轮径/胎宽的车会按照真实的离地高度摆放，能直观看出五通高度、
    车架整体高度的差异。按钮再次按下即恢复后轴对齐。
 
+5) 画布右下角 "Stem compare" 按钮（Stem Comparison Mode）：
+   有 2 台以上车时可用（只有 1 台时按钮为灰色）。点击后所有车按
+   "头管顶端"对齐，视图自动放大到头管 / 垫圈 / 把立区域；Personal
+   Fitting 中的 Spacer Height 会以该车颜色更淡的色带画在头管顶端与
+   把立之间，把立则从垫圈顶端出发叠加在上方。再次点击恢复后轴对齐。
+   悬停 Spacer Height 行可在画布上看到该垫圈高度的尺寸标注。
+
 
 四、必要输入（11 项）
 --------------------------------------------------------------------
@@ -137,6 +145,8 @@ Stem（把立）：
                        伸出，正角度沿舵管向上。
   Stem reach           从把立末端向舵管作垂线，该垂线的长度。
   Stem stack           把立线在舵管轴线上的投影长度。
+  Spacer height        垫圈总高度：位于头管顶端与把立之间；以当前车颜色
+                       更淡的色带绘制，把立起点相应沿舵管上移。
 
   Length + Angle 与 Reach + Stack 是同一组把立的两种表示，可双向换算：
   修改前一对中的任一字段，后一对自动更新；反之亦然。只填一半时不会
@@ -221,6 +231,8 @@ Crankset（牙盘）：
   · 右下角 "On the ground" 按钮：切换叠画基线。默认后轴对齐；按下后
     按车轮最低线（地面线）对齐，能看出不同轮径/胎宽带来的五通高度与
     车架高度差异；再按一次恢复；
+  · 右下角 "Stem compare" 按钮：按头管顶端对齐并放大头管区域，配合
+    Spacer Height 比较两台车的垫圈/把立叠加位置；再按一次恢复后轴对齐；
   · Compare 表列出全部 23 项（11 个输入 + 12 个补全参数）在 A/B/C 上
     的数值，并显示 B、C 相对 A 车的差值；
   · 任一台车填写了 Personal Fitting 数据时，对比表末尾会追加
@@ -248,12 +260,15 @@ Export templates / Import templates：
     index.html?compare=crux,classic
     index.html?compare=crux&view=params&param=stack
     index.html?compare=crux,classic&align=ground
+    index.html?compare=crux,classic&align=stem
 
   · preset  指定 A 车预设
   · compare 追加对比车（逗号分隔，可多个，最多 3 台）
   · view    params 或 compare，打开时显示的视图
-  · param   打开时预先高亮的参数（车架参数或个人设定键名均可）
-  · align   ground 时按地面线对齐（否则按后轴对齐）
+  · param   打开时预先高亮的参数（车架参数或个人设定键名均可，
+            例如 param=spacerHeight）
+  · align   ground 按地面线对齐，stem 进入 Stem Comparison Mode；
+            默认按后轴对齐
 
 
 十一、常见问题
@@ -279,6 +294,13 @@ Export templates / Import templates：
 答：切换叠画基线。默认按后轴对齐（方便比较车架几何）；按下后改成
     按车轮最低线（地面线）对齐，能看出轮径/胎宽造成的五通高度与
     整车高度差异；再按一次恢复后轴对齐。
+
+问：Stem compare 模式怎么用？
+答：先添加第二台车，在 Personal Fitting 中填写两车的 Stem 与
+    Spacer Height；点右下角 "Stem compare"，两车按头管顶端对齐并
+    自动放大到头管区域，垫圈以该车颜色的淡色带显示，把立从垫圈顶端
+    出发叠加在上方。悬停 Spacer Height 行可看该高度的尺寸标注；
+    再点一次恢复后轴对齐。只有一台车时该按钮为灰色。
 
 问：数据会上传吗？
 答：不会。本工具完全在本地浏览器中运行，没有统计、没有联网请求。
