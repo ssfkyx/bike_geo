@@ -1,0 +1,80 @@
+﻿Bike Geo 简介
+
+Bike Geo 是一个参数化自行车几何绘图工具，单个 HTML 文件，双击即用，无需安装、无需联网。
+面向车架设计、产品开发与几何对比场景：输入一台自行车的必要几何参数，程序按标准自行车
+几何关系补全其余参数，并在点阵纸风格的画布上生成侧视线稿。
+
+使用方式
+
+打开 bike_geo.html，在右侧面板编辑当前选中车的 11 项必要输入，画布会实时重绘；下方
+Compensated 区列出全部自动补全值。顶部 Preset 可载入内置车型，修改任一参数后该车转为
+Custom。可将当前车的输入用 Save template 存成命名模板（本机浏览器保存），之后从模板
+下拉框载入；模板栏下方的 Export templates 可把全部模板导出为 JSON，Import templates
+用于在新设备/新浏览器导入恢复。Personal Fitting Area 为可选的把立、坐高/座管、牙盘
+数据，留空不参与绘图。需要保存图时使用 Export SVG 导出矢量图。也支持 URL 参数快速打开
+指定视图（如 ?compare=crux,classic 或 ?align=ground），便于分享与复核。
+
+主要功能
+
+1. 参数化线稿：输入侧为 BSD、胎宽、后下叉长、BB drop、立管长/角、头管长/角、
+   前中心、前叉 Rake（Fork offset）与前叉长度（Fork length）；Reach、Stack、
+   Wheelbase、有效上管、Trail、机械 Trail、轮胎外径等由几何关系反推。Reach、
+   Stack 与 Stack/Reach 比作为结果列在 Compensated 最前面。这样避免同时输入
+   Reach/Stack 与前叉长度/Rake 造成的过约束矛盾。
+
+2. 联动标注：悬停参数行时，画布上对应管件/轮组高亮并绘出该项尺寸线，其余线条淡出，
+   便于快速核对单个尺寸。
+
+3. 多车对比：最多 3 台车（A/B/C）叠画，分别使用黑、baby 蓝、活力橙，各车轮胎环带以
+   本车颜色淡色填充；Compare 视图列出全部参数及相对 A 车的差值。
+
+4. 对齐基线：默认按后轴对齐叠画，便于比较车架几何；画布右下角 On the ground 按钮可
+   切换为按车轮最低线（地面线）对齐，用于呈现不同轮径/胎宽造成的五通高度与整车高度差异。
+
+5. 模板：点 Save template 给当前车的全部输入起名保存（保存在本机浏览器，不上传），
+   之后从 Templates 下拉框选择即可载入，右侧 × 删除；A/B/C 可分别保存不同模板。
+
+6. 模板导出/导入：Export templates 把全部模板（含个人设定）导出为 JSON 文件；
+   Import templates 在新设备或新浏览器导入合并。同名模板会询问是否覆盖，取消时自动
+   改名保留两份。适合换设备、备份或团队共享设定。
+
+7. 个人设定（Personal Fitting Area，可选）：把立 Length / Angle / Reach / Stack
+   四个可输入量双向换算（前两个与后两个等价）；Saddle Height、Seatpost Length
+   输入后自动派生 Seatpost Over Frame 与 Seatpost Insert Length；Crank Length
+   从中轴向下绘制垂线。全部字段可留空，不改变车架几何结果，仅在填写后叠加绘制
+   并进入对比表。
+
+8. 导出：当前画布可导出为独立 SVG，包含各车颜色、点阵纸与标注，可在 Illustrator、
+   Figma 或 CAD 中继续编辑。
+
+个人设定计算口径
+
+把立以舵管垂线为角度基准：Stem angle 0° 表示垂直于舵管伸出，正角度沿舵管向上。
+Stem reach = Length × cos(Angle)，Stem stack = Length × sin(Angle)；反向由
+Reach + Stack 可还原 Length = √(Reach² + Stack²) 与 Angle = atan2(Stack, Reach)。
+
+坐高沿立管从五通中心量到坐垫顶面。Seatpost Over Frame = Saddle Height − Seat Tube
+Length；Seatpost Insert Length = Seatpost Length − Seatpost Over Frame。两个结果只读，
+负值会以橙色提示组合不成立。
+
+轮径计算逻辑
+
+工具采用行业几何表常用的名义尺寸模型：
+
+    轮胎外径 OD = BSD + 2 × 轮胎宽度
+
+BSD 为胎圈座直径（700C/29" = 622 mm，650B/27.5" = 584 mm）。模型将轮胎截面宽度视为
+胎侧高度，每侧贡献 1 倍胎宽；因此宽度每增加 1 mm，半径增加 1 mm、外径增加 2 mm。
+
+校验点：700C（622）+ 26 mm → 674 mm；650B（584）+ 47 mm → 678 mm。页面顶部状态条与
+Tire outer diameter 一行会直接显示当前车的结果。
+
+该结果为名义值，实际装车外径会受轮圈内宽、胎压、花纹与胎体结构、品牌公差等影响，通常
+存在数毫米差异。若已有实测外径，可用 等效胎宽 =（实测外径 − BSD）÷ 2 反算后填入。
+
+技术说明
+
+纯 HTML / CSS / JavaScript，无第三方依赖、无构建步骤；样式与脚本全部内联在
+bike_geo.html 内，不发起任何网络请求。
+
+Bike Geo v1.1 · 2026-10

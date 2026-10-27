@@ -1,0 +1,3874 @@
+<!DOCTYPE html>
+<!-- Bike Geo — single-file build. Double-click to open in a modern browser (no install, no network). All CSS and JS is inlined. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bike Geo — parametric bicycle geometry sketch</title>
+  <meta name="description" content="Input the necessary bicycle geometry for up to three bikes, compare them in colour and see the frames drawn on dotted paper.">
+  <style>
+/* Bike Geo — dotted-paper canvas + parameter panel */
+
+:root {
+  --bg: #f1f3f6;
+  --surface: #ffffff;
+  --ink: #1c2733;
+  --ink-2: #46525f;
+  --muted: #7b8694;
+  --line: #e4e9ef;
+  --line-strong: #d2dae3;
+  --accent: #e8590c;
+  --accent-ink: #b5460f;
+  --accent-soft: #fff4ed;
+  --mono: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; }
+
+[hidden] { display: none !important; }
+
+/* Bike A / B / C compare colours (SVG strokes, tabs, legend, table cells) */
+.bike-0 { --bike: #111827; }
+.bike-1 { --bike: #4FA8E8; }
+.bike-2 { --bike: #F97316; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--sans);
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------------ *
+ * Top bar
+ * ------------------------------------------------------------------ */
+.topbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 13px 22px;
+  background: rgba(255, 255, 255, .86);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(8px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.brand-icon {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.brand-text h1 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 660;
+  letter-spacing: -.01em;
+  line-height: 1.15;
+}
+
+.brand-text p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 0 0 auto;
+}
+
+.preset-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.preset-field select {
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+  background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M3 4.5 6 7.5 9 4.5' fill='none' stroke='%237b8694' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 9px center;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  padding: 7px 28px 7px 10px;
+  cursor: pointer;
+  max-width: 210px;
+}
+
+.preset-field select:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(232, 89, 12, .13);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 560;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: background .13s ease, border-color .13s ease, color .13s ease;
+}
+
+.btn svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.btn:hover:not(:disabled) {
+  background: #fbfcfd;
+  border-color: #b9c4cf;
+}
+
+.btn:active:not(:disabled) { transform: translateY(1px); }
+
+.btn:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(232, 89, 12, .13);
+}
+
+.btn:disabled {
+  opacity: .52;
+  cursor: not-allowed;
+}
+
+.btn.ghost {
+  border-style: dashed;
+  color: var(--muted);
+  background: transparent;
+}
+
+/* ------------------------------------------------------------------ *
+ * Layout
+ * ------------------------------------------------------------------ */
+.layout {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 384px;
+  gap: 18px;
+  padding: 18px 22px 22px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Stage: dotted paper
+ * ------------------------------------------------------------------ */
+.stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background-color: #f8f9fb;
+  background-image:
+    radial-gradient(circle, #c9d1da 1px, transparent 1.4px),
+    radial-gradient(circle, #b0bac6 1.3px, transparent 1.75px);
+  background-size: 20px 20px, 100px 100px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 1px 2px rgba(28, 39, 51, .03);
+}
+
+#drawing {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.stage-hint,
+.stage-badge {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, .86);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 12px;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+.stage-hint { left: 14px; bottom: 14px; }
+
+.hint-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(232, 89, 12, .16);
+}
+
+.stage-badge {
+  top: 14px;
+  right: 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .01em;
+}
+
+/* Ground / axle alignment toggle */
+.align-toggle {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: 560;
+  color: var(--muted);
+  background: rgba(255, 255, 255, .86);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  transition: color .13s ease, border-color .13s ease, background .13s ease, box-shadow .13s ease;
+}
+
+.align-toggle:hover {
+  color: var(--ink-2);
+  border-color: var(--line-strong);
+}
+
+.align-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(232, 89, 12, .16);
+}
+
+.align-toggle-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  transition: background .13s ease, border-color .13s ease;
+}
+
+.align-toggle.is-on {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border-color: #f0b795;
+}
+
+.align-toggle.is-on .align-toggle-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.bike-legend {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: min(46%, 380px);
+  pointer-events: none;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  padding: 5px 11px;
+  font-size: 11.5px;
+  color: var(--ink-2);
+  background: rgba(255, 255, 255, .88);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+}
+
+.bike-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bike);
+}
+
+.legend-item strong {
+  font-weight: 700;
+  color: var(--bike);
+}
+
+.legend-name {
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ------------------------------------------------------------------ *
+ * Parameter panel
+ * ------------------------------------------------------------------ */
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 2px rgba(28, 39, 51, .03);
+  overflow: hidden;
+}
+
+.panel-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 15px 18px 13px;
+  border-bottom: 1px solid var(--line);
+}
+
+.panel-head h2 {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+}
+
+.panel-sub {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+
+/* Bike tabs + add button */
+.bike-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 12px 18px 0;
+}
+
+.bike-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bike-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 9px;
+  font-size: 12.5px;
+  font-weight: 560;
+  color: var(--ink-2);
+  background: #fff;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color .12s ease, background .12s ease, color .12s ease;
+}
+
+.bike-tab:hover { background: #f9fbfc; border-color: #b9c4cf; }
+
+.bike-tab.is-selected {
+  color: var(--ink);
+  border-color: var(--bike);
+  background: #f6f9fb;
+  box-shadow: inset 0 0 0 1px var(--bike);
+}
+
+.bike-tab:focus-visible {
+  box-shadow: 0 0 0 2px rgba(38, 49, 61, .18);
+}
+
+.bike-letter {
+  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--bike);
+}
+
+.bike-remove {
+  margin: -2px -2px -2px 0;
+  padding: 2px 3px;
+  font-size: 13px;
+  line-height: 1;
+  font-family: var(--sans);
+  color: #9aa4b1;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.bike-remove:hover { background: #eef1f4; color: #d64545; }
+
+.add-bike {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px dashed var(--line-strong);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: border-color .12s ease, color .12s ease;
+}
+
+.add-bike:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.add-bike:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Saved templates (name -> inputs, stored in localStorage) */
+.template-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px 0;
+}
+
+.template-btn {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: 560;
+  color: var(--ink-2);
+  background: #fff;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .13s ease, border-color .13s ease, color .13s ease;
+}
+
+.template-btn:hover { background: #f9fbfc; border-color: #b9c4cf; }
+
+.template-btn:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(232, 89, 12, .13);
+}
+
+.template-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 6px 26px 6px 9px;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  color: var(--ink);
+  background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M3 4.5 6 7.5 9 4.5' fill='none' stroke='%237b8694' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 8px center;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.template-select:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(232, 89, 12, .13);
+}
+
+.template-delete {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1;
+  color: #9aa4b1;
+  background: #fff;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .13s ease, border-color .13s ease, color .13s ease;
+}
+
+.template-delete:hover:not(:disabled) {
+  color: #d64545;
+  border-color: #e6b3b3;
+  background: #fff5f5;
+}
+
+.template-delete:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Template export / import links */
+.template-links {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px 0;
+}
+
+.link-btn {
+  padding: 0;
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: #cdd5de;
+  text-underline-offset: 2px;
+}
+
+.link-btn:hover {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
+.link-sep { color: #c3cbd5; font-size: 10px; }
+
+/* Personal Fitting Area (optional stem / saddle / crank data) */
+.fitting-group { margin-top: 22px; }
+
+.optional-pill {
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: #6b7683;
+  background: #eef2f6;
+  border: 1px solid #dde4eb;
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
+.fitting-card {
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+  background: #fbfcfe;
+  padding: 2px 12px 10px;
+}
+
+.fit-block + .fit-block {
+  border-top: 1px solid #eef1f4;
+  margin-top: 2px;
+}
+
+.fit-title {
+  margin: 10px 0 2px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #7d8896;
+}
+
+.fit-rows { border-top: 0; }
+
+.fit-row { min-height: 31px; }
+
+.fit-row .row-label { font-size: 12px; color: #5b6875; }
+
+.fit-row input[type="number"] {
+  width: 74px;
+  padding: 3px 6px;
+}
+
+.fit-row .unit {
+  width: 20px;
+  margin-left: 5px;
+  font-size: 9.5px;
+}
+
+.fit-value {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: #5b6875;
+}
+
+.fit-value.is-missing { color: #9aa4b1; }
+.fit-value.is-negative { color: #c2410c; }
+
+.fit-note {
+  margin: 8px 0 2px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: #8a94a1;
+}
+
+/* Parameters / Compare switch */
+.view-switch {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 4px;
+  padding: 12px 18px 0;
+}
+
+.view-btn {
+  flex: 1 1 0;
+  padding: 7px 10px;
+  font-family: var(--sans);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--muted);
+  background: #f3f5f7;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease, border-color .12s ease;
+}
+
+.view-btn:hover:not(:disabled) { color: var(--ink-2); background: #eef2f5; }
+
+.view-btn.is-selected {
+  color: var(--ink);
+  background: #fff;
+  border-color: var(--line-strong);
+  box-shadow: 0 1px 2px rgba(28, 39, 51, .05);
+}
+
+.view-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.panel-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 2px 18px 18px;
+  overscroll-behavior: contain;
+}
+
+.panel-scroll::-webkit-scrollbar { width: 10px; }
+.panel-scroll::-webkit-scrollbar-thumb {
+  background: #dde3ea;
+  border: 3px solid #fff;
+  border-radius: 999px;
+}
+.panel-scroll::-webkit-scrollbar-thumb:hover { background: #c9d2dc; }
+
+.group h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 18px 0 8px;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.count {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: #9aa4b1;
+}
+
+.rows {
+  border-top: 1px solid var(--line);
+}
+
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 34px;
+  margin: 0 -8px;
+  padding: 4px 8px;
+  border-bottom: 1px solid #f1f4f7;
+  border-radius: 8px;
+  outline: none;
+  transition: background .12s ease;
+}
+
+.row:last-child { border-bottom: none; }
+
+.row:hover { background: #f6f8fa; }
+
+.row.is-active { background: var(--accent-soft); }
+
+.row.is-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+.row:focus-visible {
+  box-shadow: 0 0 0 2px rgba(232, 89, 12, .32);
+}
+
+.row-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.2;
+  color: var(--ink-2);
+  cursor: default;
+}
+
+.computed .row-label { color: #5b6876; }
+
+.row-value {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+input[type="number"] {
+  width: 82px;
+  padding: 4px 7px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--ink);
+  text-align: right;
+  background: #fbfcfd;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  -moz-appearance: textfield;
+  appearance: textfield;
+  transition: border-color .12s ease, box-shadow .12s ease, background .12s ease;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"]:focus {
+  outline: none;
+  background: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(232, 89, 12, .12);
+}
+
+.row.is-invalid input[type="number"] {
+  border-color: #d64545;
+  background: #fff5f5;
+}
+
+.unit {
+  width: 24px;
+  margin-left: 6px;
+  font-size: 10.5px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+
+.value {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: #2c3947;
+}
+
+/* ------------------------------------------------------------------ *
+ * Compare table
+ * ------------------------------------------------------------------ */
+.compare-table {
+  border-top: 1px solid var(--line);
+}
+
+.cmp-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 -6px;
+  padding: 6px;
+  border-bottom: 1px solid #f1f4f7;
+  border-radius: 6px;
+}
+
+.cmp-row:last-child { border-bottom: none; }
+.cmp-row:hover { background: #f6f8fa; }
+.cmp-row.is-active { background: var(--accent-soft); }
+
+.cmp-head {
+  padding-top: 4px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.cmp-divider {
+  padding-top: 12px;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.cmp-divider .cmp-label {
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cmp-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--ink-2);
+}
+
+.cmp-label em {
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: #9aa4b1;
+  margin-left: 2px;
+}
+
+.cmp-cell {
+  flex: 0 0 62px;
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--bike, var(--ink));
+  white-space: nowrap;
+}
+
+.cmp-cell.is-missing { color: #aab4bf; }
+
+.cmp-delta {
+  display: block;
+  margin-top: 1px;
+  font-size: 9.5px;
+  color: #98a3b0;
+}
+
+.cmp-head .cmp-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--bike);
+}
+
+.compare-note {
+  margin: 10px 0 2px;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.compare-note strong { color: var(--ink-2); }
+
+/* ------------------------------------------------------------------ *
+ * Online card
+ * ------------------------------------------------------------------ */
+.online-card {
+  margin-top: 20px;
+  padding: 14px 14px 15px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
+.online-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.online-head h3 {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pill {
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: #8a6d3b;
+  background: #fdf3e3;
+  border: 1px solid #f0d9b2;
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
+.online-card p {
+  margin: 9px 0 12px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.online-card code {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #55616e;
+  background: #eef2f6;
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+/* ------------------------------------------------------------------ *
+ * Toast
+ * ------------------------------------------------------------------ */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 20;
+  transform: translateX(-50%) translateY(8px);
+  padding: 9px 16px;
+  font-size: 12.5px;
+  color: #fff;
+  background: #1c2733;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(15, 23, 32, .18);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease;
+}
+
+.toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ------------------------------------------------------------------ *
+ * SVG drawing styles
+ * ------------------------------------------------------------------ */
+#drawing text {
+  font-family: var(--mono);
+}
+
+#drawing .part {
+  fill: none;
+  stroke: var(--bike, #26313d);
+  stroke-width: 2.1px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#drawing .part.wheel { stroke-width: 2.2px; }
+#drawing .part.rim { stroke-width: 1.3px; opacity: .62; }
+#drawing .part.tire {
+  fill: var(--bike, #111827);
+  fill-opacity: .14;
+  stroke: none;
+}
+#drawing .part.hub { fill: var(--bike, #111827); stroke: none; }
+#drawing .part.ground {
+  stroke: var(--bike, #a8b2be);
+  stroke-width: 1.1px;
+  stroke-dasharray: 9 9;
+  opacity: .5;
+}
+
+/* Personal fitting overlays: thin stem/seatpost/crank, slightly bolder saddle */
+#drawing .part.fit { stroke-width: 1.6px; opacity: .82; }
+#drawing .part.fit.saddle { stroke-width: 2.4px; opacity: .92; }
+
+#drawing .part.is-active { stroke-width: 4.2px; }
+
+/* Hover focus: fade everything except the related lines, on every bike. */
+#drawing.is-inspecting .part { opacity: .32; }
+#drawing.is-inspecting .part.is-active { opacity: 1; }
+#drawing.is-inspecting .part.tire.is-active { fill-opacity: .30; }
+
+#drawing .dim-line {
+  fill: none;
+  stroke: #d9480f;
+  stroke-width: 1.2px;
+}
+
+#drawing .dim-ext {
+  fill: none;
+  stroke: #c2cad4;
+  stroke-width: 1px;
+  stroke-dasharray: 5 5;
+}
+
+#drawing .dim-guide {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1px;
+  stroke-dasharray: 6 6;
+  opacity: .6;
+}
+
+#drawing .dim-arc {
+  fill: none;
+  stroke: #d9480f;
+  stroke-width: 1.2px;
+}
+
+#drawing .dim-arrow { fill: #d9480f; stroke: none; }
+
+#drawing .dim-label {
+  fill: #b5460f;
+  font-weight: 560;
+  paint-order: stroke;
+  stroke: #f8f9fb;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+#drawing .dim-tag rect {
+  fill: #fff8f3;
+  stroke: #f0b795;
+  stroke-width: 1px;
+}
+
+#drawing .dim-tag text {
+  fill: #a83f0c;
+  font-weight: 620;
+  paint-order: stroke;
+  stroke: #fff8f3;
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}
+
+/* ------------------------------------------------------------------ *
+ * Responsive
+ * ------------------------------------------------------------------ */
+@media (max-width: 980px) {
+  body { overflow: auto; }
+
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(320px, 54vh) auto;
+  }
+
+  .panel { max-height: none; }
+
+  .panel-scroll { overflow: visible; }
+
+  .brand-text p { white-space: normal; }
+}
+
+@media (max-width: 680px) {
+  .topbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+  }
+
+  .top-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .layout { padding: 12px 16px 16px; gap: 12px; }
+
+  .brand-text p { display: none; }
+
+  .stage-hint { display: none; }
+}
+
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="8" cy="21" r="5.6"></circle>
+        <circle cx="24" cy="21" r="5.6"></circle>
+        <path d="M8 21 14.5 9.5 24 21M14.5 9.5h5.6"></path>
+      </svg>
+      <div class="brand-text">
+        <h1>Bike Geo</h1>
+        <p>Input the necessary geometry — the rest is compensated and drawn.</p>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <label class="preset-field">
+        <span>Preset</span>
+        <select id="preset-select" aria-label="Geometry preset for the selected bike"></select>
+      </label>
+      <button id="export-svg" class="btn" type="button" title="Download the current drawing as an SVG file">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0 3-3M8 10 5 7M3 13h10"></path></svg>
+        Export SVG
+      </button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="stage" aria-label="Bike geometry drawing">
+      <svg id="drawing" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"
+           role="img" aria-label="Parametric bicycle line drawing"></svg>
+
+      <div class="bike-legend" id="bike-legend" hidden></div>
+
+      <div class="stage-hint">
+        <span class="hint-dot"></span>
+        Hover a parameter to highlight its line
+      </div>
+      <div class="stage-badge" id="stage-badge">700C / 29" · 26 mm</div>
+
+      <button id="align-toggle" class="align-toggle" type="button" aria-pressed="false"
+              title="Bikes are aligned by the rear axle — click to stand them on the ground line">
+        <span class="align-toggle-dot" aria-hidden="true"></span>
+        On the ground
+      </button>
+    </section>
+
+    <aside class="panel" aria-label="Geometry parameters">
+      <div class="panel-head">
+        <h2>Geometry</h2>
+        <span class="panel-sub">edit → redraw</span>
+      </div>
+
+      <div class="bike-bar">
+        <div id="bike-tabs" class="bike-tabs" role="group" aria-label="Bikes"></div>
+        <button id="add-bike" class="add-bike" type="button" title="Add a bike to compare (max 3)">
+          <span aria-hidden="true">+</span> Add bike
+        </button>
+      </div>
+
+      <div class="template-bar" aria-label="Templates">
+        <button id="template-save" class="template-btn" type="button"
+                title="Save the selected bike's inputs as a template (stored in this browser)">Save template</button>
+        <select id="template-select" class="template-select" aria-label="Saved templates"></select>
+        <button id="template-delete" class="template-delete" type="button"
+                title="Delete the selected template" aria-label="Delete the selected template" disabled>&#215;</button>
+      </div>
+
+      <div class="template-links">
+        <button id="template-export" class="link-btn" type="button"
+                title="Download all saved templates as a JSON file">Export templates</button>
+        <span class="link-sep">&#183;</span>
+        <button id="template-import" class="link-btn" type="button"
+                title="Import templates from a JSON file">Import templates</button>
+        <input id="template-import-input" type="file" accept=".json,application/json" hidden>
+      </div>
+
+      <div class="view-switch" role="tablist" aria-label="Panel view">
+        <button id="view-params" class="view-btn is-selected" type="button" role="tab" aria-selected="true">Parameters</button>
+        <button id="view-compare" class="view-btn" type="button" role="tab" aria-selected="false" disabled>Compare</button>
+      </div>
+
+      <div class="panel-scroll">
+        <div id="view-params-body">
+          <section class="group">
+            <h3>Necessary inputs <span id="input-count" class="count"></span></h3>
+            <div id="inputs-list" class="rows"></div>
+          </section>
+
+          <section class="group">
+            <h3>Compensated <span id="computed-count" class="count"></span></h3>
+            <div id="computed-list" class="rows"></div>
+          </section>
+
+          <section class="group fitting-group" aria-label="Personal Fitting Area">
+            <h3>Personal Fitting Area <span class="optional-pill">optional</span></h3>
+            <div class="fitting-card">
+              <div class="fit-block">
+                <div class="fit-title">Stem</div>
+                <div id="fitting-stem" class="rows fit-rows"></div>
+                <p class="fit-note">
+                  Length + Angle &#8596; Reach + Stack. Angle is measured from the
+                  perpendicular to the steerer (0&#176; = straight out); positive rises.
+                </p>
+              </div>
+              <div class="fit-block">
+                <div class="fit-title">Saddle / Seatpost</div>
+                <div id="fitting-saddle" class="rows fit-rows"></div>
+              </div>
+              <div class="fit-block">
+                <div class="fit-title">Crankset</div>
+                <div id="fitting-crank" class="rows fit-rows"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div id="view-compare-body" hidden>
+          <section class="group compare-group">
+            <h3>Bike comparison <span id="compare-count" class="count"></span></h3>
+            <div id="compare-table" class="compare-table"></div>
+            <p class="compare-note">Deltas are relative to <strong>Bike A</strong>. Hover a row to highlight that part on every bike.</p>
+          </section>
+        </div>
+
+        <section class="online-card">
+          <div class="online-head">
+            <h3>Online geometry</h3>
+            <span class="pill">planned</span>
+          </div>
+          <p>
+            Pull a published bike's geometry from a URL and fill the inputs.
+            Online import is reserved for a future version.
+          </p>
+          <button id="import-url" class="btn ghost" type="button" disabled
+                  title="Reserved for a future version">
+            Import from URL…
+          </button>
+        </section>
+      </div>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script>
+/*!
+ * Bike Geo — parametric bicycle geometry solver.
+ *
+ * Works in the browser (window.BikeGeo) and in Node (module.exports), so the
+ * exact same code is unit-tested and shipped.
+ *
+ * Coordinate system (world): x forward, y up, rear axle at the origin (0, 0).
+ * The ground line is y = -tireRadius. All lengths are millimetres, angles
+ * degrees. The solver takes the *necessary* inputs and compensates everything
+ * else (front center, trail, effective top tube, fork offset, ...).
+ */
+(function (root, factory) {
+  'use strict';
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.BikeGeo = factory();
+  }
+}(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var DEG = Math.PI / 180;
+
+  /* ------------------------------------------------------------------ *
+   * Necessary inputs. Everything not listed here is derived.
+   * ------------------------------------------------------------------ */
+  var DEFAULTS = Object.freeze({
+    bsd: 622,              // bead seat diameter, 622 = 700C / 29"
+    tireWidth: 26,         // nominal width, used as tire height
+    chainstay: 410,        // center (BB) to center (rear axle)
+    bbDrop: 74,            // vertical drop of the BB below the axle line
+    seatTubeLength: 447,   // BB center to top of the seat tube
+    seatTubeAngle: 75.5,
+    headTubeAngle: 71.75,
+    headTubeLength: 102,
+    frontCenter: 574.5,    // BB center -> front axle, straight-line
+    forkOffset: 47.5,      // perpendicular distance, front axle -> steering axis
+    forkLength: 388.3      // front axle -> head-tube bottom, straight-line
+  });
+
+  var INPUT_RULES = {
+    bsd: { min: 200, max: 800, step: 1 },
+    tireWidth: { min: 0, max: 120, step: 1 },
+    chainstay: { min: 300, max: 700, step: 1 },
+    bbDrop: { min: 0, max: 120, step: 1 },
+    seatTubeLength: { min: 200, max: 700, step: 1 },
+    seatTubeAngle: { min: 60, max: 90, step: 0.25 },
+    headTubeAngle: { min: 50, max: 90, step: 0.25 },
+    headTubeLength: { min: 40, max: 300, step: 1 },
+    frontCenter: { min: 350, max: 850, step: 1 },
+    forkOffset: { min: 0, max: 100, step: 0.5 },
+    forkLength: { min: 300, max: 600, step: 1 }
+  };
+
+  var PRESETS = [
+    {
+      id: 'tarmac',
+      label: 'Tarmac SL7 Comp \u201923 (49)',
+      inputs: {
+        bsd: 622, tireWidth: 26, chainstay: 410, bbDrop: 74,
+        seatTubeLength: 447, seatTubeAngle: 75.5, headTubeAngle: 71.75,
+        headTubeLength: 102, frontCenter: 574.5, forkOffset: 47.5, forkLength: 388.3
+      }
+    },
+    {
+      id: 'crux',
+      label: 'CruX Expert \u201925 (49)',
+      inputs: {
+        bsd: 622, tireWidth: 38, chainstay: 425, bbDrop: 74,
+        seatTubeLength: 466, seatTubeAngle: 75.5, headTubeAngle: 70.5,
+        headTubeLength: 100, frontCenter: 594.1, forkOffset: 50, forkLength: 404.5
+      }
+    },
+    {
+      id: 'classic',
+      label: 'Classic road (56)',
+      inputs: {
+        bsd: 622, tireWidth: 28, chainstay: 410, bbDrop: 70,
+        seatTubeLength: 510, seatTubeAngle: 73.5, headTubeAngle: 73.25,
+        headTubeLength: 160, frontCenter: 592.2, forkOffset: 48.4, forkLength: 369.5
+      }
+    },
+    {
+      id: 'gravel650',
+      label: '650B gravel (47 mm)',
+      inputs: {
+        bsd: 584, tireWidth: 47, chainstay: 430, bbDrop: 70,
+        seatTubeLength: 500, seatTubeAngle: 73.5, headTubeAngle: 71.5,
+        headTubeLength: 130, frontCenter: 599.8, forkOffset: 45.9, forkLength: 415.2
+      }
+    }
+  ];
+
+  /* Baked-in drawing conventions (not "necessary" geometry, just how the
+   * sketch is assembled from the solved points). */
+  var DRAW = Object.freeze({
+    ttSeatInset: 18,   // top tube joins this far below the seat tube top
+    ssSeatInset: 34,   // seat stays join slightly below the top tube
+    ttHeadInset: 14,   // top tube joins this far below the head tube top
+    dtHeadFactor: 0.22 // down tube joins the head tube this far from its bottom
+  });
+
+  /* ------------------------------------------------------------------ *
+   * Small helpers
+   * ------------------------------------------------------------------ */
+  function clamp(v, lo, hi) {
+    return v < lo ? lo : (v > hi ? hi : v);
+  }
+
+  function readNumber(raw, key, fallback) {
+    if (raw && typeof raw === 'object' && raw[key] !== undefined && raw[key] !== null && raw[key] !== '') {
+      var v = parseFloat(raw[key]);
+      if (isFinite(v)) return v;
+    }
+    return fallback;
+  }
+
+  function dist(a, b) {
+    var dx = b.x - a.x, dy = b.y - a.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function add(a, b) {
+    return { x: a.x + b.x, y: a.y + b.y };
+  }
+
+  function scaled(p, s) {
+    return { x: p.x * s, y: p.y * s };
+  }
+
+  /* ------------------------------------------------------------------ *
+   * solve(rawInput) -> geometry model
+   * ------------------------------------------------------------------ */
+  function solve(rawInput) {
+    var input = {};
+    Object.keys(DEFAULTS).forEach(function (key) {
+      var value = readNumber(rawInput, key, DEFAULTS[key]);
+      var rule = INPUT_RULES[key];
+      input[key] = clamp(value, rule.min, rule.max);
+    });
+
+    var sta = input.seatTubeAngle * DEG;
+    var hta = input.headTubeAngle * DEG;
+
+    // Tire model: the outer diameter grows by 2 mm for every extra 1 mm of
+    // cross-section width — one side of the tire on each side of the BSD.
+    //   700C (622) + 26 mm  -> 674 mm OD
+    //   650B (584) + 47 mm  -> 678 mm OD
+    var tireRadius = input.bsd / 2 + input.tireWidth;
+    var tireOuterDiameter = input.bsd + 2 * input.tireWidth;
+    var groundY = -tireRadius;
+
+    var rearAxle = { x: 0, y: 0 };
+
+    // BB sits `chainstay` from the rear axle, `bbDrop` below the axle line.
+    var chainstayHorizontal = Math.sqrt(Math.max(
+      input.chainstay * input.chainstay - input.bbDrop * input.bbDrop, 1
+    ));
+    var bb = { x: chainstayHorizontal, y: -input.bbDrop };
+    var bbHeight = tireRadius - input.bbDrop;
+
+    // Front center (BB center -> front axle) plus BB drop fixes the front axle,
+    // and therefore the wheelbase, relative to the rear axle.
+    var frontCenter = input.frontCenter;
+    var frontCenterHorizontal = Math.sqrt(Math.max(
+      frontCenter * frontCenter - input.bbDrop * input.bbDrop, 1
+    ));
+    var frontAxle = { x: bb.x + frontCenterHorizontal, y: 0 };
+    var wheelbase = frontAxle.x;
+
+    // Unit directions (y up).
+    var seatDir = { x: -Math.cos(sta), y: Math.sin(sta) };   // up the seat tube
+    var steerDir = { x: -Math.cos(hta), y: Math.sin(hta) };  // up the head tube
+    var steerDown = { x: Math.cos(hta), y: -Math.sin(hta) }; // down the steering axis
+    var steerNormal = { x: Math.sin(hta), y: Math.cos(hta) }; // forward/up from the axis
+
+    // The front axle sits `forkOffset` perpendicular from the steering axis;
+    // the head-tube bottom sits `forkLength` from the axle. This derives the
+    // head tube position (and therefore reach/stack) instead of assuming them.
+    var forkOffset = input.forkOffset;
+    var forkLength = input.forkLength;
+    var axisFoot = {
+      x: frontAxle.x - forkOffset * steerNormal.x,
+      y: frontAxle.y - forkOffset * steerNormal.y
+    };
+    var alongAxis = Math.sqrt(Math.max(forkLength * forkLength - forkOffset * forkOffset, 0));
+    var htBottom = add(axisFoot, scaled(steerDir, alongAxis));
+    var htTop = add(htBottom, scaled(steerDir, input.headTubeLength));
+
+    var seatTop = add(bb, scaled(seatDir, input.seatTubeLength));
+    var reach = htTop.x - bb.x;
+    var stack = htTop.y - bb.y;
+
+    // Steering axis meets the ground forward of the contact patch -> trail.
+    var tGround = (groundY - htBottom.y) / steerDown.y;
+    var steeringGroundX = htBottom.x + steerDown.x * tGround;
+    var trail = steeringGroundX - frontAxle.x;
+
+    // Mechanical trail: perpendicular distance from the contact patch to the
+    // steering axis.
+    var contact = { x: frontAxle.x, y: groundY };
+    var toContact = { x: contact.x - htBottom.x, y: contact.y - htBottom.y };
+    var mechanicalTrail = Math.abs(steerDir.x * toContact.y - steerDir.y * toContact.x);
+
+    var effectiveTopTube = reach + stack / Math.tan(sta);
+
+    // Sketch anchors for the tubes.
+    var ttSeat = add(bb, scaled(seatDir, input.seatTubeLength - DRAW.ttSeatInset));
+    var ssSeat = add(bb, scaled(seatDir, input.seatTubeLength - DRAW.ssSeatInset));
+    var ttHead = add(htTop, scaled(steerDir, -DRAW.ttHeadInset));
+    var dtHead = add(htBottom, scaled(steerDir, DRAW.dtHeadFactor * input.headTubeLength));
+
+    // Rim line: inner edge of the tire.
+    var rimRadius = Math.max(tireRadius - input.tireWidth, tireRadius * 0.55);
+
+    return {
+      input: input,
+      tireRadius: tireRadius,
+      tireOuterDiameter: tireOuterDiameter,
+      rimRadius: rimRadius,
+      groundY: groundY,
+      rearAxle: rearAxle,
+      frontAxle: frontAxle,
+      bb: bb,
+      seatTop: seatTop,
+      htTop: htTop,
+      htBottom: htBottom,
+      seatDir: seatDir,
+      steerDir: steerDir,
+      steerDown: steerDown,
+      chainstayHorizontal: chainstayHorizontal,
+      bbHeight: bbHeight,
+      wheelbase: wheelbase,
+      frontCenter: frontCenter,
+      frontCenterHorizontal: frontCenterHorizontal,
+      reach: reach,
+      stack: stack,
+      effectiveTopTube: effectiveTopTube,
+      forkOffset: forkOffset,
+      forkLength: forkLength,
+      trail: trail,
+      mechanicalTrail: mechanicalTrail,
+      stackReachRatio: stack / reach,
+      steeringGroundX: steeringGroundX,
+      anchors: {
+        ttSeat: ttSeat,
+        ssSeat: ssSeat,
+        ttHead: ttHead,
+        dtHead: dtHead
+      }
+    };
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Parameter catalogue: one row per displayed datum. `parts` lists the
+   * drawing elements to highlight when the row is hovered.
+   * ------------------------------------------------------------------ */
+  var PARAMS = [
+    // Necessary inputs -------------------------------------------------
+    { group: 'input', key: 'bsd', label: 'Wheel BSD', unit: 'mm', precision: 0,
+      hint: '622 = 700C / 29", 584 = 650B / 27.5", 559 = 26"',
+      parts: ['wheel-rear', 'wheel-front'] },
+    { group: 'input', key: 'tireWidth', label: 'Tire width', unit: 'mm', precision: 0,
+      hint: 'Tire cross-section width = side-wall height. OD = BSD + 2 \u00d7 width, so +1 mm width = +2 mm OD',
+      parts: ['wheel-rear', 'wheel-front', 'rim-rear', 'rim-front', 'tire-rear', 'tire-front'] },
+    { group: 'input', key: 'chainstay', label: 'Chainstay length', unit: 'mm', precision: 0,
+      parts: ['chainstay'] },
+    { group: 'input', key: 'bbDrop', label: 'BB drop', unit: 'mm', precision: 0,
+      parts: ['bbshell'] },
+    { group: 'input', key: 'seatTubeLength', label: 'Seat tube length', unit: 'mm', precision: 0,
+      parts: ['seattube'] },
+    { group: 'input', key: 'seatTubeAngle', label: 'Seat tube angle', unit: '\u00b0', precision: 2,
+      parts: ['seattube'] },
+    { group: 'input', key: 'headTubeAngle', label: 'Head tube angle', unit: '\u00b0', precision: 2,
+      parts: ['headtube', 'fork'] },
+    { group: 'input', key: 'headTubeLength', label: 'Head tube length', unit: 'mm', precision: 0,
+      parts: ['headtube'] },
+    { group: 'input', key: 'frontCenter', label: 'Front center', unit: 'mm', precision: 1,
+      hint: 'BB center -> front axle (straight-line). Wheelbase is derived from this.',
+      parts: ['bbshell', 'hub-front'] },
+    { group: 'input', key: 'forkOffset', label: 'Fork offset (rake)', unit: 'mm', precision: 1,
+      hint: 'Perpendicular distance from the front axle to the steering axis',
+      parts: ['fork', 'hub-front'] },
+    { group: 'input', key: 'forkLength', label: 'Fork length', unit: 'mm', precision: 1,
+      hint: 'Front axle -> head-tube bottom (straight-line)',
+      parts: ['fork'] },
+
+    // Compensated / derived --------------------------------------------
+    { group: 'computed', key: 'reach', label: 'Reach', unit: 'mm', precision: 1,
+      parts: ['headtube', 'toptube'] },
+    { group: 'computed', key: 'stack', label: 'Stack', unit: 'mm', precision: 1,
+      parts: ['headtube', 'toptube'] },
+    { group: 'computed', key: 'stackReachRatio', label: 'Stack / reach ratio', unit: ':1', precision: 2,
+      parts: ['headtube'] },
+    { group: 'computed', key: 'tireRadius', label: 'Tire outer radius', unit: 'mm', precision: 1,
+      parts: ['wheel-rear', 'wheel-front', 'tire-rear', 'tire-front'] },
+    { group: 'computed', key: 'tireOuterDiameter', label: 'Tire outer diameter', unit: 'mm', precision: 1,
+      parts: ['wheel-rear', 'wheel-front', 'tire-rear', 'tire-front'] },
+    { group: 'computed', key: 'bbHeight', label: 'BB height', unit: 'mm', precision: 1,
+      parts: ['bbshell'] },
+    { group: 'computed', key: 'chainstayHorizontal', label: 'Chainstay (horizontal)', unit: 'mm', precision: 1,
+      parts: ['chainstay'] },
+    { group: 'computed', key: 'frontCenterHorizontal', label: 'Front center (horizontal)', unit: 'mm', precision: 1,
+      parts: ['bbshell', 'hub-front'] },
+    { group: 'computed', key: 'effectiveTopTube', label: 'Effective top tube', unit: 'mm', precision: 1,
+      parts: ['toptube'] },
+    { group: 'computed', key: 'wheelbase', label: 'Wheelbase', unit: 'mm', precision: 1,
+      parts: ['hub-rear', 'hub-front'] },
+    { group: 'computed', key: 'trail', label: 'Trail', unit: 'mm', precision: 1,
+      parts: ['headtube', 'hub-front', 'wheel-front'] },
+    { group: 'computed', key: 'mechanicalTrail', label: 'Mechanical trail', unit: 'mm', precision: 1,
+      parts: ['headtube', 'hub-front'] }
+  ];
+
+  /* ------------------------------------------------------------------ *
+   * Personal fitting (optional data; never changes the frame geometry)
+   *
+   * Stem model: the stem leaves the top of the head tube and is measured from
+   * the perpendicular to the steerer axis (0 deg = perpendicular, positive
+   * angle rises along the steerer). With length L and angle a:
+   *   stem reach = L * cos(a)   (perpendicular to the steerer)
+   *   stem stack = L * sin(a)   (projection along the steerer)
+   * The inverse conversion (reach + stack -> length + angle) is exact.
+   *
+   * Saddle height is measured along the seat tube from the BB center. With the
+   * frame's seat tube length:
+   *   seatpost over frame  = saddle height - seat tube length
+   *   seatpost insert      = seatpost length - seatpost over frame
+   * ------------------------------------------------------------------ */
+  var EMPTY_FITTING = Object.freeze({
+    stemBasis: 'lengthAngle',
+    stemLength: null,
+    stemAngle: null,
+    stemReach: null,
+    stemStack: null,
+    saddleHeight: null,
+    seatpostLength: null,
+    crankLength: null
+  });
+
+  var FITTING_RULES = {
+    stemLength: { min: 0, max: 250, step: 1 },
+    stemAngle: { min: -45, max: 45, step: 0.5 },
+    stemReach: { min: 0, max: 250, step: 0.5 },
+    stemStack: { min: -150, max: 150, step: 0.5 },
+    saddleHeight: { min: 300, max: 1200, step: 1 },
+    seatpostLength: { min: 100, max: 600, step: 1 },
+    crankLength: { min: 100, max: 250, step: 0.5 }
+  };
+
+  var FITTING_FIELDS = [
+    { group: 'stem', key: 'stemLength', label: 'Stem length', unit: 'mm', precision: 1,
+      hint: 'From the top of the head tube along the stem', parts: ['fit-stem'] },
+    { group: 'stem', key: 'stemAngle', label: 'Stem angle', unit: '\u00b0', precision: 1,
+      hint: '0\u00b0 = perpendicular to the steerer; positive rises along the steerer',
+      parts: ['fit-stem'] },
+    { group: 'stem', key: 'stemReach', label: 'Stem reach', unit: 'mm', precision: 1,
+      hint: 'Perpendicular distance from the stem end to the steerer axis',
+      parts: ['fit-stem'] },
+    { group: 'stem', key: 'stemStack', label: 'Stem stack', unit: 'mm', precision: 1,
+      hint: 'Projection of the stem on the steerer axis',
+      parts: ['fit-stem'] },
+    { group: 'saddle', key: 'saddleHeight', label: 'Saddle height', unit: 'mm', precision: 1,
+      hint: 'BB center to saddle top, measured along the seat tube',
+      parts: ['fit-seatpost', 'fit-saddle'] },
+    { group: 'saddle', key: 'seatpostLength', label: 'Seatpost length', unit: 'mm', precision: 1,
+      hint: 'Total seatpost length',
+      parts: ['fit-seatpost'] },
+    { group: 'saddle', key: 'seatpostOverFrame', label: 'Seatpost over frame', unit: 'mm', precision: 1,
+      derived: true, hint: 'Saddle height - seat tube length',
+      parts: ['fit-seatpost'] },
+    { group: 'saddle', key: 'seatpostInsertLength', label: 'Seatpost insert length', unit: 'mm', precision: 1,
+      derived: true, hint: 'Seatpost length - seatpost over frame',
+      parts: ['fit-seatpost'] },
+    { group: 'crank', key: 'crankLength', label: 'Crank length', unit: 'mm', precision: 1,
+      hint: 'Drawn as a vertical line downward from the BB',
+      parts: ['fit-crank'] }
+  ];
+
+  function optionalNumber(value) {
+    if (value === null || value === undefined || value === '') return null;
+    var n = parseFloat(value);
+    return isFinite(n) ? n : null;
+  }
+
+  function clampFitting(raw) {
+    var fitting = {};
+    Object.keys(EMPTY_FITTING).forEach(function (key) {
+      fitting[key] = EMPTY_FITTING[key];
+    });
+    Object.keys(FITTING_RULES).forEach(function (key) {
+      var value = optionalNumber(raw && raw[key]);
+      if (value !== null) {
+        var rule = FITTING_RULES[key];
+        fitting[key] = clamp(value, rule.min, rule.max);
+      }
+    });
+    fitting.stemBasis = (raw && raw.stemBasis === 'reachStack') ? 'reachStack' : 'lengthAngle';
+    return fitting;
+  }
+
+  function stemFromLengthAngle(length, angle) {
+    var a = angle * DEG;
+    return {
+      length: length,
+      angle: angle,
+      reach: length * Math.cos(a),
+      stack: length * Math.sin(a)
+    };
+  }
+
+  function stemFromReachStack(reach, stack) {
+    return {
+      length: Math.sqrt(reach * reach + stack * stack),
+      angle: Math.atan2(stack, reach) / DEG,
+      reach: reach,
+      stack: stack
+    };
+  }
+
+  /* Resolves the stem inputs to one consistent set of four values. If the
+   * active pair is incomplete, the other pair is cleared but the value the user
+   * is typing is kept. */
+  function syncStem(fitting) {
+    var solved = null;
+    if (fitting.stemBasis === 'reachStack') {
+      if (fitting.stemReach !== null && fitting.stemStack !== null) {
+        solved = stemFromReachStack(fitting.stemReach, fitting.stemStack);
+      }
+    } else if (fitting.stemLength !== null && fitting.stemAngle !== null) {
+      solved = stemFromLengthAngle(fitting.stemLength, fitting.stemAngle);
+    }
+
+    if (solved) {
+      fitting.stemLength = solved.length;
+      fitting.stemAngle = solved.angle;
+      fitting.stemReach = solved.reach;
+      fitting.stemStack = solved.stack;
+    } else if (fitting.stemBasis === 'reachStack') {
+      fitting.stemLength = null;
+      fitting.stemAngle = null;
+    } else {
+      fitting.stemReach = null;
+      fitting.stemStack = null;
+    }
+    return fitting;
+  }
+
+  function solveFitting(raw, g) {
+    var fitting = syncStem(clampFitting(raw));
+
+    var seatpostOverFrame = fitting.saddleHeight !== null
+      ? fitting.saddleHeight - g.input.seatTubeLength
+      : null;
+    var seatpostInsertLength = (seatpostOverFrame !== null && fitting.seatpostLength !== null)
+      ? fitting.seatpostLength - seatpostOverFrame
+      : null;
+
+    var points = {
+      stemClamp: g.htTop,
+      stemEnd: null,
+      saddleTop: null,
+      seatpostTop: g.seatTop,
+      crankEnd: null
+    };
+    if (fitting.stemLength !== null && fitting.stemAngle !== null) {
+      var hta = g.input.headTubeAngle * DEG;
+      var a = fitting.stemAngle * DEG;
+      var up = { x: -Math.cos(hta), y: Math.sin(hta) };
+      var perp = { x: Math.sin(hta), y: Math.cos(hta) };
+      var dir = {
+        x: Math.cos(a) * perp.x + Math.sin(a) * up.x,
+        y: Math.cos(a) * perp.y + Math.sin(a) * up.y
+      };
+      points.stemEnd = {
+        x: points.stemClamp.x + dir.x * fitting.stemLength,
+        y: points.stemClamp.y + dir.y * fitting.stemLength
+      };
+    }
+    if (fitting.saddleHeight !== null) {
+      points.saddleTop = add(g.bb, scaled(g.seatDir, fitting.saddleHeight));
+    }
+    if (fitting.crankLength !== null) {
+      points.crankEnd = { x: g.bb.x, y: g.bb.y - fitting.crankLength };
+    }
+
+    return {
+      input: fitting,
+      stemLength: fitting.stemLength,
+      stemAngle: fitting.stemAngle,
+      stemReach: fitting.stemReach,
+      stemStack: fitting.stemStack,
+      saddleHeight: fitting.saddleHeight,
+      seatpostLength: fitting.seatpostLength,
+      crankLength: fitting.crankLength,
+      seatpostOverFrame: seatpostOverFrame,
+      seatpostInsertLength: seatpostInsertLength,
+      points: points
+    };
+  }
+
+  function hasFittingData(raw) {
+    if (!raw) return false;
+    return ['stemLength', 'stemAngle', 'stemReach', 'stemStack',
+      'saddleHeight', 'seatpostLength', 'crankLength'].some(function (key) {
+      return optionalNumber(raw[key]) !== null;
+    });
+  }
+
+  function valueOf(key, g) {
+    if (!g) return NaN;
+    if (g.input && Object.prototype.hasOwnProperty.call(g.input, key)) return g.input[key];
+    return g[key];
+  }
+
+  return {
+    DEG: DEG,
+    DEFAULTS: DEFAULTS,
+    INPUT_RULES: INPUT_RULES,
+    PRESETS: PRESETS,
+    DRAW: DRAW,
+    PARAMS: PARAMS,
+    FITTING_FIELDS: FITTING_FIELDS,
+    FITTING_RULES: FITTING_RULES,
+    EMPTY_FITTING: EMPTY_FITTING,
+    solve: solve,
+    solveFitting: solveFitting,
+    syncStem: syncStem,
+    clampFitting: clampFitting,
+    stemFromLengthAngle: stemFromLengthAngle,
+    stemFromReachStack: stemFromReachStack,
+    hasFittingData: hasFittingData,
+    optionalNumber: optionalNumber,
+    valueOf: valueOf,
+    dist: dist
+  };
+}));
+
+/* ------------------------------------------------------------------ */
+/*!
+ * Bike Geo — SVG line-art renderer.
+ *
+ * Pure string output: render(svgEl, options) rebuilds the drawing for one to
+ * three bikes (each in its own colour) and — when a parameter row is hovered —
+ * adds the matching dimension annotation for the selected bike while
+ * highlighting that part on every bike.
+ */
+(function (root, factory) {
+  'use strict';
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory(require('./geometry.js'));
+  } else {
+    root.BikeGeoRender = factory(root.BikeGeo);
+  }
+}(typeof self !== 'undefined' ? self : this, function (Geo) {
+  'use strict';
+
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+
+  /* Bike A / B / C strokes for comparison overlays: black, baby blue,
+   * vivid orange — maximum contrast against the light dotted paper. */
+  var BIKE_COLORS = ['#111827', '#4FA8E8', '#F97316'];
+
+  function fmt(value, precision) {
+    if (!isFinite(value)) return '\u2014';
+    var p = precision === undefined ? 0 : precision;
+    return Number(value).toFixed(p);
+  }
+
+  function esc(text) {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function n(value) {
+    return (Math.round(value * 100) / 100).toString();
+  }
+
+  /* SVG arc subpath for a full circle (used for the tyre band). */
+  function circleSubpath(cx, cy, r) {
+    return 'M' + n(cx - r) + ' ' + n(cy) +
+      'a' + n(r) + ' ' + n(r) + ' 0 1 0 ' + n(2 * r) + ' 0' +
+      'a' + n(r) + ' ' + n(r) + ' 0 1 0 ' + n(-2 * r) + ' 0Z';
+  }
+
+  function annulusPath(cx, cy, outer, inner) {
+    return circleSubpath(cx, cy, outer) + circleSubpath(cx, cy, inner);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Scene: bike parts in world coordinates
+   * ------------------------------------------------------------------ */
+  function buildParts(g) {
+    var R = g.tireRadius;
+    var rim = g.rimRadius;
+    var hub = Math.max(R * 0.022, 5);
+    var bbShell = Math.max(R * 0.07, 16);
+
+    return [
+      { id: 'ground', type: 'line', a: { x: g.rearAxle.x - R - 70, y: g.groundY },
+        b: { x: g.frontAxle.x + R + 70, y: g.groundY }, cls: 'part ground' },
+
+      /* The tyre band between the outer tyre circle and the rim circle is
+       * filled with a light tint of the bike colour so overlapping bikes stay
+       * easy to tell apart. */
+      { id: 'tire-rear', type: 'annulus', c: g.rearAxle, rOuter: R, rInner: rim, cls: 'part tire' },
+      { id: 'tire-front', type: 'annulus', c: g.frontAxle, rOuter: R, rInner: rim, cls: 'part tire' },
+
+      { id: 'wheel-rear', type: 'circle', c: g.rearAxle, r: R, cls: 'part wheel' },
+      { id: 'wheel-front', type: 'circle', c: g.frontAxle, r: R, cls: 'part wheel' },
+      { id: 'rim-rear', type: 'circle', c: g.rearAxle, r: rim, cls: 'part rim' },
+      { id: 'rim-front', type: 'circle', c: g.frontAxle, r: rim, cls: 'part rim' },
+
+      { id: 'chainstay', type: 'line', a: g.rearAxle, b: g.bb, cls: 'part frame' },
+      { id: 'seatstay', type: 'line', a: g.rearAxle, b: g.anchors.ssSeat, cls: 'part frame' },
+      { id: 'seattube', type: 'line', a: g.bb, b: g.seatTop, cls: 'part frame' },
+      { id: 'toptube', type: 'line', a: g.anchors.ttSeat, b: g.anchors.ttHead, cls: 'part frame' },
+      { id: 'downtube', type: 'line', a: g.bb, b: g.anchors.dtHead, cls: 'part frame' },
+      { id: 'headtube', type: 'line', a: g.htBottom, b: g.htTop, cls: 'part frame' },
+      { id: 'fork', type: 'line', a: g.htBottom, b: g.frontAxle, cls: 'part frame' },
+
+      { id: 'bbshell', type: 'circle', c: g.bb, r: bbShell, cls: 'part frame' },
+      { id: 'hub-rear', type: 'circle', c: g.rearAxle, r: hub, cls: 'part hub' },
+      { id: 'hub-front', type: 'circle', c: g.frontAxle, r: hub, cls: 'part hub' }
+    ];
+  }
+
+  function serializeParts(list, activeParts) {
+    var active = activeParts || [];
+    return list.map(function (p) {
+      var cls = p.cls + (active.indexOf(p.id) >= 0 ? ' is-active' : '');
+      if (p.type === 'line') {
+        return '<line class="' + cls + '" data-part="' + p.id + '" vector-effect="non-scaling-stroke"' +
+          ' x1="' + n(p.a.x) + '" y1="' + n(-p.a.y) + '"' +
+          ' x2="' + n(p.b.x) + '" y2="' + n(-p.b.y) + '"/>';
+      }
+      if (p.type === 'annulus') {
+        return '<path class="' + cls + '" data-part="' + p.id + '" vector-effect="non-scaling-stroke"' +
+          ' fill-rule="evenodd" d="' + annulusPath(p.c.x, -p.c.y, p.rOuter, p.rInner) + '"/>';
+      }
+      return '<circle class="' + cls + '" data-part="' + p.id + '" vector-effect="non-scaling-stroke"' +
+        ' cx="' + n(p.c.x) + '" cy="' + n(-p.c.y) + '" r="' + n(p.r) + '"/>';
+    }).join('');
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Alignment helpers
+   *
+   * By default the sketch is drawn with the rear axle at the origin, so bikes
+   * overlay axle-to-axle. "ground" mode shifts each bike up by its tyre radius
+   * so every bike stands on the same ground line instead.
+   * ------------------------------------------------------------------ */
+  function shiftGeometry(g, dy) {
+    if (!dy) return g;
+    function moved(point) { return { x: point.x, y: point.y + dy }; }
+    var shifted = Object.assign({}, g);
+    shifted.rearAxle = moved(g.rearAxle);
+    shifted.frontAxle = moved(g.frontAxle);
+    shifted.bb = moved(g.bb);
+    shifted.seatTop = moved(g.seatTop);
+    shifted.htTop = moved(g.htTop);
+    shifted.htBottom = moved(g.htBottom);
+    shifted.groundY = g.groundY + dy;
+    shifted.anchors = {
+      ttSeat: moved(g.anchors.ttSeat),
+      ssSeat: moved(g.anchors.ssSeat),
+      ttHead: moved(g.anchors.ttHead),
+      dtHead: moved(g.anchors.dtHead)
+    };
+    return shifted;
+  }
+
+  function alignGeometries(input, align) {
+    var bikes = Array.isArray(input) ? input : [input];
+    var mode = align === 'ground' ? 'ground' : 'axle';
+    return bikes.map(function (g) {
+      return mode === 'ground' ? shiftGeometry(g, g.tireRadius) : g;
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Personal fitting parts (optional stem / saddle / crank overlays)
+   * ------------------------------------------------------------------ */
+  function shiftFitting(fitting, dy) {
+    if (!fitting || !fitting.points || !dy) return fitting;
+    function moved(point) { return point ? { x: point.x, y: point.y + dy } : null; }
+    var shifted = Object.assign({}, fitting);
+    shifted.points = {
+      stemClamp: moved(fitting.points.stemClamp),
+      stemEnd: moved(fitting.points.stemEnd),
+      saddleTop: moved(fitting.points.saddleTop),
+      seatpostTop: moved(fitting.points.seatpostTop),
+      crankEnd: moved(fitting.points.crankEnd)
+    };
+    return shifted;
+  }
+
+  function buildFittingParts(g, fitting) {
+    if (!fitting || !fitting.points) return [];
+    var points = fitting.points;
+    var parts = [];
+
+    if (points.stemEnd) {
+      parts.push({
+        id: 'fit-stem', type: 'line',
+        a: points.stemClamp, b: points.stemEnd, cls: 'part fit stem'
+      });
+    }
+    if (points.saddleTop) {
+      if (fitting.seatpostOverFrame !== null && fitting.seatpostOverFrame > 0) {
+        parts.push({
+          id: 'fit-seatpost', type: 'line',
+          a: points.seatpostTop, b: points.saddleTop, cls: 'part fit'
+        });
+      }
+      parts.push({
+        id: 'fit-saddle', type: 'line',
+        a: { x: points.saddleTop.x - 38, y: points.saddleTop.y },
+        b: { x: points.saddleTop.x + 38, y: points.saddleTop.y },
+        cls: 'part fit saddle'
+      });
+    }
+    if (points.crankEnd) {
+      parts.push({
+        id: 'fit-crank', type: 'line',
+        a: g.bb, b: points.crankEnd, cls: 'part fit crank'
+      });
+    }
+    return parts;
+  }
+
+  function fittingPoints(fitting) {
+    if (!fitting || !fitting.points) return [];
+    var points = fitting.points;
+    return [points.stemClamp, points.stemEnd, points.saddleTop,
+      points.seatpostTop, points.crankEnd].filter(Boolean);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * View box: union bounds of every bike, plus room for dimensions
+   * ------------------------------------------------------------------ */
+  function viewBoxFor(input, extraPoints) {
+    var bikes = Array.isArray(input) ? input : [input];
+    if (!bikes.length) throw new Error('viewBoxFor needs at least one geometry');
+
+    var minX = Infinity;
+    var maxX = -Infinity;
+    var minScreenY = Infinity;
+    var maxScreenY = -Infinity;
+
+    bikes.forEach(function (g) {
+      var R = g.tireRadius;
+      minX = Math.min(minX, -R);
+      maxX = Math.max(maxX, g.frontAxle.x + R);
+      // Highest content (screen y grows downwards): wheel tops and frame tops.
+      minScreenY = Math.min(minScreenY,
+        -(g.rearAxle.y + R),
+        -(g.frontAxle.y + R),
+        -g.seatTop.y,
+        -g.htTop.y,
+        -g.anchors.ttSeat.y,
+        -g.anchors.ssSeat.y);
+      // Lowest content: the ground line the wheels stand on.
+      maxScreenY = Math.max(maxScreenY, -g.groundY);
+    });
+
+    (extraPoints || []).forEach(function (point) {
+      if (!point) return;
+      minX = Math.min(minX, point.x);
+      maxX = Math.max(maxX, point.x);
+      minScreenY = Math.min(minScreenY, -point.y);
+      maxScreenY = Math.max(maxScreenY, -point.y);
+    });
+
+    var left = minX - 90;
+    var top = minScreenY - 80;
+    var width = (maxX - minX) + 180;
+    var height = (maxScreenY + 165) - top;
+    return { x: left, y: top, w: width, h: height };
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Annotation context + primitives
+   * ------------------------------------------------------------------ */
+  function makeContext(g, box) {
+    var unit = box.w / 1000;
+    return {
+      g: g,
+      box: box,
+      fs: Math.max(box.w * 0.0138, 14 * unit),
+      fsTag: Math.max(box.w * 0.0118, 12 * unit),
+      arrow: box.w * 0.0052,
+      P: function (p) { return [p.x, -p.y]; },
+      fmt: fmt
+    };
+  }
+
+  function line(a, b, cls) {
+    return { k: 'line', a: a, b: b, cls: cls || 'dim-line' };
+  }
+
+  function guide(a, b) {
+    return { k: 'line', a: a, b: b, cls: 'dim-ext' };
+  }
+
+  function poly(points, cls) {
+    return { k: 'poly', pts: points, cls: cls || 'dim-line' };
+  }
+
+  function label(at, text, anchor, cls) {
+    return { k: 'label', at: at, text: text, anchor: anchor || 'middle', cls: cls || 'dim-label' };
+  }
+
+  function tag(ctx, at, text, anchor) {
+    var fs = ctx.fsTag;
+    var width = text.length * fs * 0.58 + fs * 1.15;
+    var height = fs * 1.72;
+    var x = at[0] - (anchor === 'start' ? 0 : anchor === 'end' ? width : width / 2);
+    return { k: 'tag', x: x, y: at[1] - height / 2, w: width, h: height, text: text, fs: fs };
+  }
+
+  function arrowHead(ctx, tip, dir) {
+    var a = ctx.arrow;
+    var back = [-dir[0], -dir[1]];
+    var angle = 0.46;
+    var c = Math.cos(angle), s = Math.sin(angle);
+    var r1 = [back[0] * c - back[1] * s, back[0] * s + back[1] * c];
+    var r2 = [back[0] * c + back[1] * s, -back[0] * s + back[1] * c];
+    return poly([
+      [tip[0] + r1[0] * a, tip[1] + r1[1] * a],
+      tip,
+      [tip[0] + r2[0] * a, tip[1] + r2[1] * a]
+    ], 'dim-arrow');
+  }
+
+  /* Linear dimension between two screen points, offset along the normal.
+   * opts.flip puts the value label on the other side of the dimension line
+   * (useful when the default side is occupied by a tube). */
+  function dim(ctx, p1, p2, offset, text, opts) {
+    opts = opts || {};
+    var dx = p2[0] - p1[0], dy = p2[1] - p1[1];
+    var len = Math.sqrt(dx * dx + dy * dy);
+    if (!(len > 1e-6)) return [];
+    var ux = dx / len, uy = dy / len;
+    var nx = -uy, ny = ux;
+    var a1 = [p1[0] + nx * offset, p1[1] + ny * offset];
+    var a2 = [p2[0] + nx * offset, p2[1] + ny * offset];
+    var ext = ctx.arrow * 1.2;
+    var out = [
+      guide(p1, [a1[0] + nx * ext, a1[1] + ny * ext]),
+      guide(p2, [a2[0] + nx * ext, a2[1] + ny * ext]),
+      line(a1, a2, 'dim-line'),
+      arrowHead(ctx, a1, [ux, uy]),
+      arrowHead(ctx, a2, [-ux, -uy])
+    ];
+    var mid = [(a1[0] + a2[0]) / 2, (a1[1] + a2[1]) / 2];
+    var gap = ctx.fs * 0.95 * (opts.flip ? -1 : 1);
+    var vertical = Math.abs(uy) > 0.7;
+    out.push({
+      k: 'label',
+      at: [mid[0] + nx * gap, mid[1] + ny * gap],
+      text: text,
+      anchor: 'middle',
+      rotate: vertical
+    });
+    return out;
+  }
+
+  /* Angle arc at a vertex, from angle a1 to a2 (radians, screen space). */
+  function angleArc(ctx, vertex, a1, a2, radius, text) {
+    var diff = a2 - a1;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    var steps = 26;
+    var pts = [];
+    for (var i = 0; i <= steps; i++) {
+      var ang = a1 + diff * (i / steps);
+      pts.push([vertex[0] + Math.cos(ang) * radius, vertex[1] + Math.sin(ang) * radius]);
+    }
+    var midAng = a1 + diff / 2;
+    var lr = radius + ctx.fs * 1.5;
+    return [
+      poly(pts, 'dim-arc'),
+      label([vertex[0] + Math.cos(midAng) * lr, vertex[1] + Math.sin(midAng) * lr], text)
+    ];
+  }
+
+  function ray(vertex, angle, length) {
+    return line(vertex, [vertex[0] + Math.cos(angle) * length, vertex[1] + Math.sin(angle) * length], 'dim-guide');
+  }
+
+  /* Foot of the perpendicular from a world point to the steering axis. */
+  function steeringFoot(g, worldPoint) {
+    var u = g.steerDir;
+    var dx = worldPoint.x - g.htBottom.x;
+    var dy = worldPoint.y - g.htBottom.y;
+    var t = dx * u.x + dy * u.y;
+    return { x: g.htBottom.x + u.x * t, y: g.htBottom.y + u.y * t };
+  }
+
+  function seatAxisXAtStack(g) {
+    var sta = g.input.seatTubeAngle * Math.PI / 180;
+    return g.bb.x - g.stack / Math.tan(sta);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Annotations per parameter key
+   * ------------------------------------------------------------------ */
+  function annotationFor(key, g, ctx) {
+    var P = ctx.P;
+    var R = g.tireRadius;
+    var bb = P(g.bb);
+    var rear = P(g.rearAxle);
+    var front = P(g.frontAxle);
+    var seatTop = P(g.seatTop);
+    var htTop = P(g.htTop);
+    var htBottom = P(g.htBottom);
+    var groundScreen = -g.groundY;
+    var sta = g.input.seatTubeAngle * Math.PI / 180;
+    var hta = g.input.headTubeAngle * Math.PI / 180;
+
+    switch (key) {
+      case 'wheelbase':
+        return dim(ctx, [rear[0], groundScreen], [front[0], groundScreen], 72,
+          fmt(g.wheelbase, 1) + ' mm');
+
+      case 'chainstay':
+        return dim(ctx, rear, bb, 48, fmt(g.input.chainstay, 0) + ' mm');
+
+      case 'bbDrop':
+        return [guide([0, 0], [bb[0], 0])].concat(
+          dim(ctx, [bb[0], 0], [bb[0], bb[1]], -58, fmt(g.input.bbDrop, 0) + ' mm', { flip: true })
+        );
+
+      case 'seatTubeLength':
+        return dim(ctx, bb, seatTop, -52, fmt(g.input.seatTubeLength, 0) + ' mm');
+
+      case 'seatTubeAngle': {
+        var seatDir = [seatTop[0] - bb[0], seatTop[1] - bb[1]];
+        var seatAng = Math.atan2(seatDir[1], seatDir[0]);
+        return [ray(bb, Math.PI, ctx.fs * 7)].concat(
+          angleArc(ctx, bb, Math.PI, seatAng, ctx.fs * 3.3, fmt(g.input.seatTubeAngle, 2) + '\u00b0')
+        );
+      }
+
+      case 'headTubeAngle': {
+        var downDir = [htBottom[0] - htTop[0], htBottom[1] - htTop[1]];
+        var downAng = Math.atan2(downDir[1], downDir[0]);
+        return [
+          ray(htBottom, 0, ctx.fs * 7),
+          line(htBottom, P({ x: g.steeringGroundX, y: g.groundY }), 'dim-guide')
+        ].concat(
+          angleArc(ctx, htBottom, 0, downAng, ctx.fs * 3.3, fmt(g.input.headTubeAngle, 2) + '\u00b0')
+        );
+      }
+
+      case 'headTubeLength':
+        return dim(ctx, htBottom, htTop, 62, fmt(g.input.headTubeLength, 0) + ' mm');
+
+      case 'reach': {
+        var corner = [bb[0], htTop[1]];
+        return [
+          guide(bb, corner)
+        ].concat(dim(ctx, corner, htTop, 38, fmt(g.reach, 1) + ' mm', { flip: true }));
+      }
+
+      case 'stack': {
+        var topCorner = [bb[0], htTop[1]];
+        return [guide(bb, topCorner)].concat(
+          dim(ctx, bb, topCorner, -50, fmt(g.stack, 1) + ' mm')
+        );
+      }
+
+      case 'forkOffset': {
+        var foot = steeringFoot(g, g.frontAxle);
+        var footS = P(foot);
+        var axisGround = P({ x: g.steeringGroundX, y: g.groundY });
+        return [
+          line(htBottom, axisGround, 'dim-guide'),
+          line(front, footS, 'dim-line'),
+          tag(ctx, [(front[0] + footS[0]) / 2 + ctx.fs * 0.4, (front[1] + footS[1]) / 2],
+            'Rake ' + fmt(g.forkOffset, 1) + ' mm', 'start')
+        ];
+      }
+
+      case 'trail': {
+        var axisGroundS = P({ x: g.steeringGroundX, y: g.groundY });
+        return [
+          line(htBottom, axisGroundS, 'dim-guide'),
+          guide(front, [front[0], groundScreen])
+        ].concat(dim(ctx, [front[0], groundScreen], [axisGroundS[0], groundScreen], 46,
+          fmt(g.trail, 1) + ' mm'));
+      }
+
+      case 'mechanicalTrail': {
+        var foot2 = steeringFoot(g, { x: g.frontAxle.x, y: g.groundY });
+        var contactS = [front[0], groundScreen];
+        var foot2S = P(foot2);
+        return [
+          line(htBottom, P({ x: g.steeringGroundX, y: g.groundY }), 'dim-guide'),
+          line(contactS, foot2S, 'dim-line'),
+          tag(ctx, [(contactS[0] + foot2S[0]) / 2, (contactS[1] + foot2S[1]) / 2 - ctx.fs * 0.7],
+            'Mech. trail ' + fmt(g.mechanicalTrail, 1) + ' mm')
+        ];
+      }
+
+      case 'frontCenter':
+        return [
+          line(bb, front, 'dim-guide'),
+          tag(ctx, [(bb[0] + front[0]) / 2, (bb[1] + front[1]) / 2 - ctx.fs * 1.1],
+            'Front center ' + fmt(g.frontCenter, 1) + ' mm')
+        ];
+
+      case 'frontCenterHorizontal':
+        return [tag(ctx, [front[0], front[1] - R - ctx.fs * 1.2],
+          'FC horiz. ' + fmt(g.frontCenterHorizontal, 1) + ' mm')];
+
+      case 'effectiveTopTube': {
+        var seatX = seatAxisXAtStack(g);
+        return dim(ctx, [seatX, htTop[1]], htTop, -34,
+          fmt(g.effectiveTopTube, 1) + ' mm', { flip: true });
+      }
+
+      case 'tireRadius': {
+        var p = [front[0] + Math.cos(-Math.PI / 4) * R, front[1] + Math.sin(-Math.PI / 4) * R];
+        return [
+          line(front, p, 'dim-line'),
+          tag(ctx, [p[0] + ctx.fs * 0.5, p[1] - ctx.fs * 0.9], 'R ' + fmt(g.tireRadius, 1) + ' mm', 'start')
+        ];
+      }
+
+      case 'tireOuterDiameter': {
+        var leftEdge = [front[0] - R, front[1]];
+        var rightEdge = [front[0] + R, front[1]];
+        return dim(ctx, leftEdge, rightEdge, 30,
+          '\u00d8 ' + fmt(g.tireOuterDiameter, 1) + ' mm');
+      }
+
+      case 'bbHeight':
+        return dim(ctx, bb, [bb[0], groundScreen], -58, fmt(g.bbHeight, 1) + ' mm');
+
+      case 'chainstayHorizontal': {
+        var csMid = [(rear[0] + bb[0]) / 2, (rear[1] + bb[1]) / 2];
+        return [guide([rear[0], 0], [bb[0], 0]), tag(ctx, [csMid[0], csMid[1] + ctx.fs * 0.9],
+          'Chainstay horiz. ' + fmt(g.chainstayHorizontal, 1) + ' mm')];
+      }
+
+      case 'forkLength':
+        return [
+          tag(ctx, [(htBottom[0] + front[0]) / 2, (htBottom[1] + front[1]) / 2 + ctx.fs * 0.4],
+            'Fork ' + fmt(g.forkLength, 1) + ' mm', 'start')
+        ];
+
+      case 'stackReachRatio':
+        return [tag(ctx, [htTop[0] + ctx.fs * 2.2, htTop[1] - ctx.fs * 0.4],
+          'S/R ' + fmt(g.stackReachRatio, 2) + ':1', 'start')];
+
+      case 'bsd':
+        return [tag(ctx, [front[0], front[1] - R - ctx.fs * 1.3],
+          'BSD ' + fmt(g.input.bsd, 0) + ' mm')];
+
+      case 'tireWidth':
+        return [tag(ctx, [front[0], front[1] - R - ctx.fs * 1.3],
+          'Tire ' + fmt(g.input.tireWidth, 0) + ' mm')];
+
+      default:
+        return [];
+    }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Serialization
+   * ------------------------------------------------------------------ */
+  function serializeAnnotations(list, ctx) {
+    var labelSize = ctx ? ctx.fs : 24;
+    return list.map(function (p) {
+      if (p.k === 'line') {
+        return '<line class="' + p.cls + '" vector-effect="non-scaling-stroke" x1="' + n(p.a[0]) + '" y1="' + n(p.a[1]) +
+          '" x2="' + n(p.b[0]) + '" y2="' + n(p.b[1]) + '"/>';
+      }
+      if (p.k === 'poly') {
+        var pts = p.pts.map(function (q) { return n(q[0]) + ',' + n(q[1]); }).join(' ');
+        return '<polyline class="' + p.cls + '" vector-effect="non-scaling-stroke" points="' + pts + '"/>';
+      }
+      if (p.k === 'label') {
+        var cls = p.cls || 'dim-label';
+        var rotate = p.rotate
+          ? ' transform="rotate(-90 ' + n(p.at[0]) + ' ' + n(p.at[1]) + ')"'
+          : '';
+        return '<text class="' + cls + '" x="' + n(p.at[0]) + '" y="' + n(p.at[1]) +
+          '" text-anchor="' + p.anchor + '" style="font-size:' + n(labelSize) + 'px"' + rotate + '>' +
+          esc(p.text) + '</text>';
+      }
+      if (p.k === 'tag') {
+        var tx = p.x + p.w / 2;
+        var ty = p.y + p.h / 2 + p.fs * 0.35;
+        return '<g class="dim-tag">' +
+          '<rect x="' + n(p.x) + '" y="' + n(p.y) + '" width="' + n(p.w) + '" height="' + n(p.h) +
+          '" rx="' + n(p.fs * 0.32) + '" ry="' + n(p.fs * 0.32) + '"/>' +
+          '<text x="' + n(tx) + '" y="' + n(ty) + '" text-anchor="middle" style="font-size:' +
+          n(p.fs) + 'px">' + esc(p.text) + '</text></g>';
+      }
+      return '';
+    }).join('');
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Public render
+   *
+   * options = {
+   *   bikes: [{ g, colorIndex, selected }],   // one to three entries
+   *   activeKey: string | null,               // hovered parameter
+   *   showAnnotation: boolean                 // draw the selected bike's dim
+   * }
+   * ------------------------------------------------------------------ */
+  function render(svgEl, options) {
+    options = options || {};
+    var source = options.bikes || [];
+    if (!source.length) return null;
+
+    var align = options.align === 'ground' ? 'ground' : 'axle';
+    var entries = source.map(function (entry) {
+      var dy = align === 'ground' ? entry.g.tireRadius : 0;
+      return {
+        g: dy ? shiftGeometry(entry.g, dy) : entry.g,
+        fitting: dy ? shiftFitting(entry.fitting, dy) : entry.fitting,
+        colorIndex: entry.colorIndex,
+        selected: entry.selected
+      };
+    });
+
+    var geometries = entries.map(function (entry) { return entry.g; });
+    var extraPoints = [];
+    entries.forEach(function (entry) {
+      extraPoints = extraPoints.concat(fittingPoints(entry.fitting));
+    });
+    var box = viewBoxFor(geometries, extraPoints);
+
+    var selected = entries.filter(function (entry) { return entry.selected; })[0] || entries[0];
+    var ctx = makeContext(selected.g, box);
+
+    var param = null;
+    if (options.activeKey) {
+      var catalogues = [Geo.PARAMS];
+      if (Geo.FITTING_FIELDS) catalogues.push(Geo.FITTING_FIELDS);
+      for (var c = 0; c < catalogues.length && !param; c++) {
+        for (var i = 0; i < catalogues[c].length; i++) {
+          if (catalogues[c][i].key === options.activeKey) { param = catalogues[c][i]; break; }
+        }
+      }
+    }
+    var activeParts = (param && param.parts) || [];
+
+    // Selected bike is drawn last so it stays readable on top.
+    var order = entries.slice().sort(function (a, b) {
+      return (a.selected === b.selected) ? 0 : (a.selected ? 1 : -1);
+    });
+    var scene = order.map(function (entry) {
+      var cls = 'bike bike-' + entry.colorIndex + (entry.selected ? ' is-selected' : '');
+      return '<g class="' + cls + '">' +
+        serializeParts(buildParts(entry.g), activeParts) +
+        serializeParts(buildFittingParts(entry.g, entry.fitting), activeParts) +
+        '</g>';
+    }).join('');
+
+    var annotations = (options.showAnnotation !== false && param)
+      ? annotationFor(options.activeKey, selected.g, ctx)
+      : [];
+
+    if (options.activeKey) {
+      svgEl.setAttribute('class', 'is-inspecting');
+    } else {
+      svgEl.removeAttribute('class');
+    }
+    svgEl.setAttribute('viewBox', [box.x, box.y, box.w, box.h].join(' '));
+    svgEl.innerHTML =
+      '<g class="scene">' + scene + '</g>' +
+      '<g class="annotations">' + serializeAnnotations(annotations, ctx) + '</g>';
+
+    return { box: box, geometryCount: entries.length, align: align };
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Standalone SVG export
+   * ------------------------------------------------------------------ */
+  var EXPORT_CSS = [
+    '.bike-0{--bike:#111827}.bike-1{--bike:#4FA8E8}.bike-2{--bike:#F97316}',
+    '.part{fill:none;stroke:var(--bike,#111827);stroke-width:2.1px;stroke-linecap:round;stroke-linejoin:round}',
+    '.part.wheel{stroke-width:2.2px}',
+    '.part.rim{stroke-width:1.3px;opacity:.62}',
+    '.part.tire{fill:var(--bike,#111827);fill-opacity:.14;stroke:none}',
+    '.part.hub{fill:var(--bike,#111827);stroke:none}',
+    '.part.ground{stroke:var(--bike,#111827);stroke-width:1.1px;stroke-dasharray:9 9;opacity:.5}',
+    '.part.fit{stroke-width:1.6px;opacity:.82}',
+    '.part.fit.saddle{stroke-width:2.4px;opacity:.92}',
+    '.part.is-active{stroke-width:4.2px}',
+    'text{font-family:ui-monospace,Consolas,monospace}',
+    '.dim-line{fill:none;stroke:#d9480f;stroke-width:1.2px}',
+    '.dim-ext{fill:none;stroke:#c2cad4;stroke-width:1px;stroke-dasharray:5 5}',
+    '.dim-guide{fill:none;stroke:#e8590c;stroke-width:1px;stroke-dasharray:6 6;opacity:.6}',
+    '.dim-arc{fill:none;stroke:#d9480f;stroke-width:1.2px}',
+    '.dim-arrow{fill:#d9480f;stroke:none}',
+    '.dim-label{fill:#b5460f;font-weight:560;paint-order:stroke;stroke:#f8f9fb;stroke-width:3px;stroke-linejoin:round}',
+    '.dim-tag rect{fill:#fff8f3;stroke:#f0b795;stroke-width:1px}',
+    '.dim-tag text{fill:#a83f0c;font-weight:620;paint-order:stroke;stroke:#fff8f3;stroke-width:2.5px;stroke-linejoin:round}'
+  ].join('');
+
+  /* Wrap the rendered scene markup into a self-contained SVG file: dotted
+   * paper background included, styles inlined, no external references. */
+  function standaloneSvg(innerMarkup, box) {
+    var viewBox = [box.x, box.y, box.w, box.h].join(' ');
+    var rect = 'x="' + box.x + '" y="' + box.y + '" width="' + box.w + '" height="' + box.h + '"';
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + viewBox + '">' +
+      '<defs><pattern id="bikegeo-dots" width="20" height="20" patternUnits="userSpaceOnUse">' +
+      '<circle cx="10" cy="10" r="0.9" fill="#c9d1da"/></pattern></defs>' +
+      '<rect ' + rect + ' fill="#f8f9fb"/>' +
+      '<rect ' + rect + ' fill="url(#bikegeo-dots)"/>' +
+      '<style>' + EXPORT_CSS + '</style>' +
+      innerMarkup +
+      '</svg>';
+  }
+
+  return {
+    render: render,
+    buildParts: buildParts,
+    buildFittingParts: buildFittingParts,
+    viewBoxFor: viewBoxFor,
+    annotationFor: annotationFor,
+    serializeAnnotations: serializeAnnotations,
+    standaloneSvg: standaloneSvg,
+    alignGeometries: alignGeometries,
+    shiftGeometry: shiftGeometry,
+    fmt: fmt,
+    makeContext: makeContext,
+    BIKE_COLORS: BIKE_COLORS
+  };
+}));
+
+/* ------------------------------------------------------------------ */
+/*!
+ * Bike Geo — online geometry source registry (extension point).
+ *
+ * The app ships with *no* online data source enabled. A source is a small
+ * adapter object registered here; enabling real import later means filling in
+ * fetchGeometry() without touching the solver, renderer or UI.
+ *
+ * Adapter contract
+ * ----------------
+ *   {
+ *     id: string,                        // stable key, e.g. "bikeinsights"
+ *     label: string,                     // display name
+ *     status: "available" | "planned",
+ *     fetchGeometry(args) -> Promise<{   // args: whatever the UI passes
+ *       name?: string,                   // bike label for the preset slot
+ *       inputs: {                        // partial set of the necessary inputs
+ *         bsd?, tireWidth?, chainstay?, bbDrop?,
+ *         seatTubeLength?, seatTubeAngle?, headTubeAngle?,
+ *         headTubeLength?, frontCenter?, forkOffset?, forkLength?
+ *       },
+ *       meta?: object                     // source url, size, build, ...
+ *     }>
+ *   }
+ *
+ * Only the inputs a source can publish need to be returned; the solver clamps
+ * and compensates everything else. Importing therefore degrades gracefully.
+ */
+(function (root, factory) {
+  'use strict';
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.BikeGeoData = factory();
+  }
+}(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var adapters = Object.create(null);
+
+  function register(adapter) {
+    if (!adapter || typeof adapter.id !== 'string' || !adapter.id.trim()) {
+      throw new Error('A data source adapter needs a non-empty string id');
+    }
+    if (typeof adapter.fetchGeometry !== 'function') {
+      throw new Error('Data source "' + adapter.id + '" needs a fetchGeometry(args) function');
+    }
+    adapters[adapter.id] = adapter;
+    return adapter;
+  }
+
+  function list() {
+    return Object.keys(adapters).map(function (id) { return adapters[id]; });
+  }
+
+  function get(id) {
+    return adapters[id] || null;
+  }
+
+  function fetchGeometry(id, args) {
+    var adapter = adapters[id];
+    if (!adapter) {
+      return Promise.reject(new Error('Unknown geometry data source: ' + id));
+    }
+    return Promise.resolve()
+      .then(function () { return adapter.fetchGeometry(args || {}); })
+      .then(function (result) {
+        if (!result || typeof result !== 'object' || typeof result.inputs !== 'object' || result.inputs === null) {
+          throw new Error('Data source "' + id + '" returned no inputs object');
+        }
+        return result;
+      });
+  }
+
+  /* Reserved adapter: Bike Insights import is deliberately not implemented in
+   * v1. Keeping it registered documents the intended integration point and
+   * lets the UI show it as "planned" instead of pretending the feature does
+   * not exist. */
+  register({
+    id: 'bikeinsights',
+    label: 'Bike Insights',
+    status: 'planned',
+    fetchGeometry: function () {
+      return Promise.reject(new Error(
+        'Bike Insights import is reserved for a future version. ' +
+        ''
+      ));
+    }
+  });
+
+  return {
+    register: register,
+    list: list,
+    get: get,
+    fetchGeometry: fetchGeometry
+  };
+}));
+
+/* ------------------------------------------------------------------ */
+/*!
+ * Bike Geo — template export / import helpers (pure, unit-tested).
+ *
+ * Templates live in the browser's localStorage. This module turns them into a
+ * portable JSON document and validates imported documents, without touching
+ * the DOM or the network.
+ */
+(function (root, factory) {
+  'use strict';
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.BikeGeoTemplates = factory();
+  }
+}(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var SCHEMA_VERSION = 1;
+
+  function copyInputs(inputs) {
+    var out = {};
+    Object.keys(inputs || {}).forEach(function (key) {
+      out[key] = inputs[key];
+    });
+    return out;
+  }
+
+  function copyFitting(fitting) {
+    var out = {};
+    Object.keys(fitting || {}).forEach(function (key) {
+      out[key] = fitting[key];
+    });
+    return out;
+  }
+
+  function createExport(templates, date) {
+    return {
+      app: 'Bike Geo',
+      schemaVersion: SCHEMA_VERSION,
+      exportedAt: (date || new Date()).toISOString(),
+      templates: (templates || []).map(function (template) {
+        return {
+          name: template.name,
+          inputs: copyInputs(template.inputs),
+          presetId: template.presetId || null,
+          fitting: copyFitting(template.fitting)
+        };
+      })
+    };
+  }
+
+  function exportText(templates, date) {
+    return JSON.stringify(createExport(templates, date), null, 2);
+  }
+
+  function exportFileName(date) {
+    var d = date || new Date();
+    var stamp = [
+      d.getFullYear(),
+      String(d.getMonth() + 1).padStart(2, '0'),
+      String(d.getDate()).padStart(2, '0')
+    ].join('');
+    return 'bikegeo-templates-' + stamp + '.json';
+  }
+
+  function parseImport(text) {
+    var data;
+    try {
+      data = JSON.parse(text);
+    } catch (err) {
+      throw new Error('Not a valid JSON file');
+    }
+
+    var list = null;
+    if (Array.isArray(data)) {
+      list = data;
+    } else if (data && Array.isArray(data.templates)) {
+      list = data.templates;
+      if (data.schemaVersion !== undefined && Number(data.schemaVersion) > SCHEMA_VERSION) {
+        throw new Error('Template file is from a newer version');
+      }
+    }
+    if (!list) throw new Error('No template list found in this file');
+
+    var templates = [];
+    var skipped = 0;
+    list.forEach(function (item) {
+      if (!item || typeof item.name !== 'string' || !item.name.trim() ||
+          !item.inputs || typeof item.inputs !== 'object' || Array.isArray(item.inputs)) {
+        skipped += 1;
+        return;
+      }
+      templates.push({
+        name: item.name.trim(),
+        inputs: copyInputs(item.inputs),
+        presetId: typeof item.presetId === 'string' ? item.presetId : null,
+        fitting: (item.fitting && typeof item.fitting === 'object' && !Array.isArray(item.fitting))
+          ? copyFitting(item.fitting)
+          : {}
+      });
+    });
+    if (!templates.length) throw new Error('No valid templates in this file');
+    return { templates: templates, skipped: skipped };
+  }
+
+  function uniqueName(base, names) {
+    if (names.indexOf(base) < 0) return base;
+    var index = 2;
+    var candidate;
+    do {
+      candidate = base + ' (' + index + ')';
+      index += 1;
+    } while (names.indexOf(candidate) >= 0);
+    return candidate;
+  }
+
+  return {
+    SCHEMA_VERSION: SCHEMA_VERSION,
+    createExport: createExport,
+    exportText: exportText,
+    exportFileName: exportFileName,
+    parseImport: parseImport,
+    uniqueName: uniqueName
+  };
+}));
+
+/* ------------------------------------------------------------------ */
+/*
+ * Bike Geo — UI wiring.
+ *
+ * One function, done well: input the necessary geometry for up to three bikes.
+ * The solver compensates everything else and the frames are drawn on top of
+ * each other in Bike A / B / C colours. Hovering a parameter highlights the
+ * matching line on every bike and draws the selected bike's dimension.
+ */
+(function () {
+  'use strict';
+
+  var Geo = window.BikeGeo;
+  var Render = window.BikeGeoRender;
+
+  var MAX_BIKES = 3;
+  var LETTERS = ['A', 'B', 'C'];
+
+  var BSD_LABELS = {
+    622: '700C / 29"',
+    584: '650B / 27.5"',
+    571: '650C',
+    559: '26"',
+    507: '24"',
+    406: '20"'
+  };
+
+  var el = {
+    svg: document.getElementById('drawing'),
+    preset: document.getElementById('preset-select'),
+    inputs: document.getElementById('inputs-list'),
+    computed: document.getElementById('computed-list'),
+    badge: document.getElementById('stage-badge'),
+    legend: document.getElementById('bike-legend'),
+    exportBtn: document.getElementById('export-svg'),
+    importBtn: document.getElementById('import-url'),
+    toast: document.getElementById('toast'),
+    inputCount: document.getElementById('input-count'),
+    computedCount: document.getElementById('computed-count'),
+    tabs: document.getElementById('bike-tabs'),
+    addBike: document.getElementById('add-bike'),
+    viewParams: document.getElementById('view-params'),
+    viewCompare: document.getElementById('view-compare'),
+    paramsBody: document.getElementById('view-params-body'),
+    compareBody: document.getElementById('view-compare-body'),
+    compareTable: document.getElementById('compare-table'),
+    compareCount: document.getElementById('compare-count'),
+    alignToggle: document.getElementById('align-toggle'),
+    templateSave: document.getElementById('template-save'),
+    templateSelect: document.getElementById('template-select'),
+    templateDelete: document.getElementById('template-delete'),
+    templateExport: document.getElementById('template-export'),
+    templateImport: document.getElementById('template-import'),
+    templateImportInput: document.getElementById('template-import-input'),
+    fittingStem: document.getElementById('fitting-stem'),
+    fittingSaddle: document.getElementById('fitting-saddle'),
+    fittingCrank: document.getElementById('fitting-crank')
+  };
+
+  var state = {
+    bikes: [createBike(presetById('tarmac') || Geo.PRESETS[0])],
+    selected: 0,
+    activeKey: null,
+    view: 'params',
+    grounded: false,
+    box: null,
+    rowByKey: Object.create(null),
+    fittingRefs: Object.create(null),
+    solved: [],
+    solvedFitting: []
+  };
+
+  var toastTimer = null;
+  var TEMPLATE_KEY = 'bikegeo.templates.v1';
+  var templates = readTemplates();
+
+  /* ------------------------------------------------------------------ *
+   * Small helpers
+   * ------------------------------------------------------------------ */
+  function presetById(id) {
+    for (var i = 0; i < Geo.PRESETS.length; i++) {
+      if (Geo.PRESETS[i].id === id) return Geo.PRESETS[i];
+    }
+    return null;
+  }
+
+  function createBike(preset) {
+    return {
+      inputs: Object.assign({}, preset.inputs),
+      presetId: preset.id,
+      fitting: emptyFitting()
+    };
+  }
+
+  function emptyFitting() {
+    return Geo.clampFitting(null);
+  }
+
+  function cloneFitting(fitting) {
+    return Geo.clampFitting(fitting || null);
+  }
+
+  function currentBike() {
+    return state.bikes[state.selected];
+  }
+
+  function currentGeometry() {
+    return state.solved[state.selected];
+  }
+
+  function letter(index) {
+    return LETTERS[index] || '?';
+  }
+
+  function bikeTitle(bike, index) {
+    var preset = presetById(bike.presetId);
+    return 'Bike ' + letter(index) + ' \u2014 ' + (preset ? preset.label : 'Custom geometry');
+  }
+
+  function wheelLabel(bsd) {
+    return BSD_LABELS[bsd] || (bsd + ' mm BSD');
+  }
+
+  function clampInput(key, value) {
+    var rule = Geo.INPUT_RULES[key];
+    if (!rule) return value;
+    return Math.min(rule.max, Math.max(rule.min, value));
+  }
+
+  function esc(text) {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function formatDelta(delta, precision) {
+    var p = precision === undefined ? 0 : precision;
+    var rounded = Number(delta.toFixed(p));
+    if (Math.abs(rounded) < Math.pow(10, -p) / 2) return '\u00b10';
+    return (rounded > 0 ? '+' : '') + rounded.toFixed(p);
+  }
+
+  function toast(message) {
+    el.toast.textContent = message;
+    el.toast.classList.add('is-visible');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      el.toast.classList.remove('is-visible');
+    }, 2600);
+  }
+
+  function download(filename, text, mime) {
+    var blob = new Blob([text], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(function () {
+      URL.revokeObjectURL(url);
+      link.remove();
+    }, 0);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Render pipeline
+   * ------------------------------------------------------------------ */
+  function renderDrawing() {
+    var entries = state.solved.map(function (g, index) {
+      return {
+        g: g,
+        fitting: state.solvedFitting[index],
+        colorIndex: index,
+        selected: index === state.selected
+      };
+    });
+    var result = Render.render(el.svg, {
+      bikes: entries,
+      activeKey: state.activeKey,
+      showAnnotation: state.view === 'params',
+      align: state.grounded ? 'ground' : 'axle'
+    });
+    if (result) state.box = result.box;
+  }
+
+  function updateComputed() {
+    var g = currentGeometry();
+    if (!g) return;
+    Geo.PARAMS.forEach(function (param) {
+      if (param.group !== 'computed') return;
+      var ref = state.rowByKey[param.key];
+      if (!ref || !ref.valueEl) return;
+      ref.valueEl.textContent = Render.fmt(Geo.valueOf(param.key, g), param.precision);
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Personal fitting (optional; never feeds back into the frame geometry)
+   * ------------------------------------------------------------------ */
+  function fittingDisplayValue(value) {
+    if (value === null || value === undefined || !isFinite(value)) return '';
+    return String(Math.round(value * 100) / 100);
+  }
+
+  function updateFittingValues() {
+    var solved = state.solvedFitting[state.selected];
+    Geo.FITTING_FIELDS.forEach(function (field) {
+      if (!field.derived) return;
+      var ref = state.fittingRefs[field.key];
+      if (!ref || !ref.valueEl) return;
+      var value = solved ? solved[field.key] : null;
+      if (value === null || value === undefined || !isFinite(value)) {
+        ref.valueEl.textContent = '\u2014';
+        ref.valueEl.classList.add('is-missing');
+        ref.valueEl.classList.remove('is-negative');
+      } else {
+        ref.valueEl.textContent = Render.fmt(value, field.precision);
+        ref.valueEl.classList.remove('is-missing');
+        ref.valueEl.classList.toggle('is-negative', value < 0);
+      }
+    });
+  }
+
+  function syncFittingInputs() {
+    var fitting = currentBike().fitting;
+    Geo.FITTING_FIELDS.forEach(function (field) {
+      if (field.derived) return;
+      var ref = state.fittingRefs[field.key];
+      if (!ref || !ref.input) return;
+      ref.input.value = fittingDisplayValue(fitting[field.key]);
+    });
+  }
+
+  function refreshFittingInputs(exceptKey) {
+    var fitting = currentBike().fitting;
+    Geo.FITTING_FIELDS.forEach(function (field) {
+      if (field.derived || field.key === exceptKey) return;
+      var ref = state.fittingRefs[field.key];
+      if (!ref || !ref.input) return;
+      ref.input.value = fittingDisplayValue(fitting[field.key]);
+    });
+  }
+
+  function solveFittingAll() {
+    state.solvedFitting = state.bikes.map(function (bike, index) {
+      return Geo.solveFitting(bike.fitting, state.solved[index]);
+    });
+  }
+
+  function applyFittingChange() {
+    solveFittingAll();
+    renderDrawing();
+    updateFittingValues();
+    updateCompareTable();
+    updateRowStates();
+  }
+
+  function updateBadge() {
+    var g = currentGeometry();
+    if (!g) return;
+    var prefix = state.bikes.length > 1 ? 'Bike ' + letter(state.selected) + ' \u00b7 ' : '';
+    el.badge.textContent = prefix + wheelLabel(g.input.bsd) + ' \u00b7 ' +
+      Render.fmt(g.input.tireWidth, 0) + ' mm \u00b7 OD ' +
+      Render.fmt(g.tireOuterDiameter, 1) + ' mm';
+  }
+
+  function updateAlignButton() {
+    el.alignToggle.setAttribute('aria-pressed', state.grounded ? 'true' : 'false');
+    el.alignToggle.classList.toggle('is-on', state.grounded);
+    el.alignToggle.title = state.grounded
+      ? 'Bikes stand on the ground line — click to align by the rear axle'
+      : 'Bikes are aligned by the rear axle — click to stand them on the ground line';
+  }
+
+  function updateRowStates() {
+    var rows = document.querySelectorAll('.row[data-key], .cmp-row[data-key]');
+    for (var i = 0; i < rows.length; i++) {
+      rows[i].classList.toggle('is-active', rows[i].getAttribute('data-key') === state.activeKey);
+    }
+  }
+
+  function updateTabs() {
+    el.tabs.innerHTML = state.bikes.map(function (bike, index) {
+      var selected = index === state.selected;
+      var removable = state.bikes.length > 1;
+      return '<div class="bike-tab bike-' + index + (selected ? ' is-selected' : '') +
+        '" role="tab" tabindex="0" data-index="' + index + '"' +
+        ' aria-selected="' + (selected ? 'true' : 'false') + '"' +
+        ' title="' + esc(bikeTitle(bike, index)) + '">' +
+        '<span class="bike-dot" aria-hidden="true"></span>' +
+        '<span class="bike-letter">' + letter(index) + '</span>' +
+        (removable
+          ? '<button type="button" class="bike-remove" data-remove="' + index + '"' +
+            ' title="Remove bike ' + letter(index) + '" aria-label="Remove bike ' + letter(index) + '">\u00d7</button>'
+          : '') +
+        '</div>';
+    }).join('');
+
+    el.addBike.disabled = state.bikes.length >= MAX_BIKES;
+    el.addBike.title = state.bikes.length >= MAX_BIKES
+      ? 'Maximum of 3 bikes'
+      : 'Add a bike to compare (max 3)';
+  }
+
+  function updateLegend() {
+    if (state.bikes.length < 2) {
+      el.legend.hidden = true;
+      el.legend.innerHTML = '';
+      return;
+    }
+    el.legend.hidden = false;
+    el.legend.innerHTML = state.bikes.map(function (bike, index) {
+      var preset = presetById(bike.presetId);
+      return '<span class="legend-item bike-' + index + '">' +
+        '<span class="bike-dot" aria-hidden="true"></span>' +
+        '<strong>' + letter(index) + '</strong>' +
+        '<span class="legend-name">' + esc(preset ? preset.label : 'Custom geometry') + '</span>' +
+        '</span>';
+    }).join('');
+  }
+
+  function updateView() {
+    var multi = state.bikes.length >= 2;
+    if (!multi) state.view = 'params';
+
+    el.viewParams.classList.toggle('is-selected', state.view === 'params');
+    el.viewCompare.classList.toggle('is-selected', state.view === 'compare');
+    el.viewParams.setAttribute('aria-selected', state.view === 'params' ? 'true' : 'false');
+    el.viewCompare.setAttribute('aria-selected', state.view === 'compare' ? 'true' : 'false');
+
+    el.paramsBody.hidden = state.view !== 'params';
+    el.compareBody.hidden = state.view !== 'compare';
+
+    el.viewCompare.disabled = !multi;
+    el.viewCompare.textContent = multi ? 'Compare (' + state.bikes.length + ')' : 'Compare';
+  }
+
+  function updateCompareTable() {
+    var multi = state.bikes.length >= 2;
+    el.compareCount.textContent = multi ? state.bikes.length + ' bikes' : '';
+    if (!multi) {
+      el.compareTable.innerHTML = '';
+      return;
+    }
+
+    var html = '<div class="cmp-row cmp-head" aria-hidden="true"><span class="cmp-label"></span>';
+    state.bikes.forEach(function (bike, index) {
+      html += '<span class="cmp-cell bike-' + index + '">' +
+        '<span class="bike-dot"></span>' + letter(index) + '</span>';
+    });
+    html += '</div>';
+
+    var base = state.solved[0];
+    Geo.PARAMS.forEach(function (param) {
+      html += '<div class="cmp-row" data-key="' + param.key + '">' +
+        '<span class="cmp-label">' + esc(param.label) + ' <em>' + esc(param.unit) + '</em></span>';
+      var baseValue = Geo.valueOf(param.key, base);
+      state.bikes.forEach(function (bike, index) {
+        var value = Geo.valueOf(param.key, state.solved[index]);
+        var delta = index > 0
+          ? '<span class="cmp-delta">' + formatDelta(value - baseValue, param.precision) + '</span>'
+          : '';
+        html += '<span class="cmp-cell bike-' + index + '">' +
+          Render.fmt(value, param.precision) + delta + '</span>';
+      });
+      html += '</div>';
+    });
+
+    var anyFitting = state.bikes.some(function (bike) {
+      return Geo.hasFittingData(bike.fitting);
+    });
+    if (anyFitting) {
+      html += '<div class="cmp-row cmp-divider"><span class="cmp-label">Personal fitting</span>' +
+        state.bikes.map(function () {
+          return '<span class="cmp-cell"></span>';
+        }).join('') + '</div>';
+      Geo.FITTING_FIELDS.forEach(function (field) {
+        html += '<div class="cmp-row" data-key="' + field.key + '">' +
+          '<span class="cmp-label">' + esc(field.label) + ' <em>' + esc(field.unit) + '</em></span>';
+        var baseFitting = state.solvedFitting[0];
+        var baseValue = baseFitting ? baseFitting[field.key] : null;
+        state.bikes.forEach(function (bike, index) {
+          var solved = state.solvedFitting[index];
+          var value = solved ? solved[field.key] : null;
+          var missing = value === null || value === undefined || !isFinite(value);
+          var delta = '';
+          if (index > 0 && !missing && baseValue !== null && baseValue !== undefined) {
+            delta = '<span class="cmp-delta">' + formatDelta(value - baseValue, field.precision) + '</span>';
+          }
+          html += '<span class="cmp-cell bike-' + index + (missing ? ' is-missing' : '') + '">' +
+            (missing ? '\u2014' : Render.fmt(value, field.precision)) + delta + '</span>';
+        });
+        html += '</div>';
+      });
+    }
+    el.compareTable.innerHTML = html;
+  }
+
+  function syncPresetSelect() {
+    var bike = currentBike();
+    el.preset.value = bike.presetId || 'custom';
+  }
+
+  function syncInputFields() {
+    var bike = currentBike();
+    Geo.PARAMS.forEach(function (param) {
+      if (param.group !== 'input') return;
+      var ref = state.rowByKey[param.key];
+      if (ref && ref.input) ref.input.value = bike.inputs[param.key];
+    });
+  }
+
+  function apply() {
+    state.solved = state.bikes.map(function (bike) { return Geo.solve(bike.inputs); });
+    solveFittingAll();
+    updateView();
+    renderDrawing();
+    updateComputed();
+    updateFittingValues();
+    updateBadge();
+    updateTabs();
+    updateLegend();
+    updateCompareTable();
+    syncPresetSelect();
+    syncFittingInputs();
+    updateRowStates();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Hover / focus highlighting
+   * ------------------------------------------------------------------ */
+  function setActive(key) {
+    if (state.activeKey === key) return;
+    state.activeKey = key;
+    updateRowStates();
+    renderDrawing();
+  }
+
+  function clearActive(key) {
+    if (state.activeKey !== key) return;
+    state.activeKey = null;
+    updateRowStates();
+    renderDrawing();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Templates: named copies of one bike's inputs, stored in this browser
+   * ------------------------------------------------------------------ */
+  function readTemplates() {
+    try {
+      var raw = window.localStorage.getItem(TEMPLATE_KEY);
+      var list = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(list)) return [];
+      return list.filter(function (template) {
+        return template && typeof template.name === 'string' &&
+          template.inputs && typeof template.inputs === 'object';
+      }).map(function (template) {
+        return {
+          name: template.name,
+          inputs: template.inputs,
+          presetId: template.presetId || null,
+          fitting: cloneFitting(template.fitting)
+        };
+      });
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function storeTemplates() {
+    try {
+      window.localStorage.setItem(TEMPLATE_KEY, JSON.stringify(templates));
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function rebuildTemplateSelect(selectedName) {
+    var options = ['<option value="">Templates\u2026</option>'];
+    templates.forEach(function (template) {
+      options.push('<option value="' + esc(template.name) + '">' + esc(template.name) + '</option>');
+    });
+    el.templateSelect.innerHTML = options.join('');
+    var keep = selectedName && templates.some(function (template) {
+      return template.name === selectedName;
+    });
+    el.templateSelect.value = keep ? selectedName : '';
+    el.templateDelete.disabled = !el.templateSelect.value;
+  }
+
+  function resetTemplateSelection() {
+    el.templateSelect.value = '';
+    el.templateDelete.disabled = true;
+  }
+
+  function suggestTemplateName() {
+    var preset = presetById(currentBike().presetId);
+    return preset ? preset.label : 'Bike ' + letter(state.selected);
+  }
+
+  function saveTemplate() {
+    var name = window.prompt('Save the selected bike as a template:', suggestTemplateName());
+    if (name === null) return;
+    name = String(name).trim();
+    if (!name) {
+      toast('Template name is required');
+      return;
+    }
+    var existing = -1;
+    templates.forEach(function (template, index) {
+      if (template.name === name) existing = index;
+    });
+    if (existing >= 0 && !window.confirm('Overwrite template "' + name + '"?')) return;
+
+    var record = {
+      name: name,
+      inputs: Object.assign({}, currentBike().inputs),
+      presetId: currentBike().presetId,
+      fitting: cloneFitting(currentBike().fitting)
+    };
+    if (existing >= 0) templates[existing] = record;
+    else templates.push(record);
+
+    var persisted = storeTemplates();
+    rebuildTemplateSelect(name);
+    toast(persisted ? 'Template "' + name + '" saved' : 'Template saved for this session only');
+  }
+
+  function loadTemplate(name) {
+    var record = null;
+    templates.forEach(function (template) {
+      if (template.name === name) record = template;
+    });
+    if (!record) {
+      resetTemplateSelection();
+      return;
+    }
+
+    var bike = currentBike();
+    bike.inputs = {};
+    Object.keys(Geo.DEFAULTS).forEach(function (key) {
+      var value = parseFloat(record.inputs[key]);
+      bike.inputs[key] = isFinite(value) ? value : Geo.DEFAULTS[key];
+    });
+    bike.presetId = presetById(record.presetId) ? record.presetId : null;
+    bike.fitting = cloneFitting(record.fitting);
+
+    syncInputFields();
+    syncFittingInputs();
+    apply();
+    el.templateSelect.value = name;
+    el.templateDelete.disabled = false;
+    toast('Template "' + name + '" loaded');
+  }
+
+  function deleteTemplate() {
+    var name = el.templateSelect.value;
+    if (!name) return;
+    if (!window.confirm('Delete template "' + name + '"?')) return;
+    templates = templates.filter(function (template) { return template.name !== name; });
+    storeTemplates();
+    rebuildTemplateSelect();
+    toast('Template deleted');
+  }
+
+  function exportTemplates() {
+    if (!templates.length) {
+      toast('No templates to export');
+      return;
+    }
+    download(window.BikeGeoTemplates.exportFileName(),
+      window.BikeGeoTemplates.exportText(templates), 'application/json');
+    toast('Exported ' + templates.length + ' template(s)');
+  }
+
+  function importTemplatesFromText(text) {
+    var parsed;
+    try {
+      parsed = window.BikeGeoTemplates.parseImport(text);
+    } catch (err) {
+      toast('Import failed: ' + err.message);
+      return;
+    }
+
+    var names = templates.map(function (template) { return template.name; });
+    var added = 0;
+    var overwritten = 0;
+    var renamed = 0;
+
+    parsed.templates.forEach(function (incoming) {
+      var existing = -1;
+      templates.forEach(function (template, index) {
+        if (template.name === incoming.name) existing = index;
+      });
+      if (existing < 0) {
+        templates.push(incoming);
+        names.push(incoming.name);
+        added += 1;
+        return;
+      }
+      var overwrite = window.confirm('Template "' + incoming.name +
+        '" already exists. Overwrite? (Cancel keeps both)');
+      if (overwrite) {
+        templates[existing] = incoming;
+        overwritten += 1;
+      } else {
+        var unique = window.BikeGeoTemplates.uniqueName(incoming.name, names);
+        incoming.name = unique;
+        templates.push(incoming);
+        names.push(unique);
+        renamed += 1;
+      }
+    });
+
+    var persisted = storeTemplates();
+    rebuildTemplateSelect();
+    var details = [];
+    if (added) details.push(added + ' new');
+    if (overwritten) details.push(overwritten + ' replaced');
+    if (renamed) details.push(renamed + ' renamed');
+    toast('Imported ' + parsed.templates.length + ' template(s)' +
+      (details.length ? ' (' + details.join(', ') + ')' : '') +
+      (persisted ? '' : ' \u00b7 session only'));
+  }
+
+  function importTemplatesFile(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      importTemplatesFromText(String(reader.result || ''));
+    };
+    reader.onerror = function () {
+      toast('Could not read that file');
+    };
+    reader.readAsText(file);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Bike management
+   * ------------------------------------------------------------------ */
+  function selectBike(index) {
+    if (index === state.selected || !state.bikes[index]) return;
+    state.selected = index;
+    state.activeKey = null;
+    syncInputFields();
+    syncFittingInputs();
+    apply();
+    resetTemplateSelection();
+  }
+
+  function addBike() {
+    if (state.bikes.length >= MAX_BIKES) return;
+
+    var usedPresets = state.bikes.map(function (bike) { return bike.presetId; });
+    var preset = Geo.PRESETS.filter(function (candidate) {
+      return usedPresets.indexOf(candidate.id) === -1;
+    })[0];
+
+    if (preset) {
+      state.bikes.push(createBike(preset));
+    } else {
+      state.bikes.push({
+        inputs: Object.assign({}, currentBike().inputs),
+        presetId: null,
+        fitting: cloneFitting(currentBike().fitting)
+      });
+    }
+
+    state.selected = state.bikes.length - 1;
+    state.activeKey = null;
+    state.view = 'compare';
+    syncInputFields();
+    syncFittingInputs();
+    apply();
+    resetTemplateSelection();
+    toast('Added Bike ' + letter(state.selected) + (preset ? ' \u00b7 ' + preset.label : ' (copy)'));
+  }
+
+  function removeBike(index) {
+    if (state.bikes.length <= 1) return;
+    var removed = letter(index);
+    state.bikes.splice(index, 1);
+    if (state.selected === index) {
+      state.selected = Math.min(index, state.bikes.length - 1);
+    } else if (state.selected > index) {
+      state.selected -= 1;
+    }
+    state.activeKey = null;
+    syncInputFields();
+    syncFittingInputs();
+    apply();
+    resetTemplateSelection();
+    toast('Removed Bike ' + removed);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Panel construction
+   * ------------------------------------------------------------------ */
+  function buildPresetSelect() {
+    var fragment = document.createDocumentFragment();
+    Geo.PRESETS.forEach(function (preset) {
+      var option = document.createElement('option');
+      option.value = preset.id;
+      option.textContent = preset.label;
+      fragment.appendChild(option);
+    });
+    var custom = document.createElement('option');
+    custom.value = 'custom';
+    custom.textContent = 'Custom';
+    fragment.appendChild(custom);
+
+    el.preset.appendChild(fragment);
+  }
+
+  function buildInputRow(param) {
+    var row = document.createElement('div');
+    row.className = 'row input-row';
+    row.dataset.key = param.key;
+    row.tabIndex = 0;
+
+    var label = document.createElement('label');
+    label.className = 'row-label';
+    label.htmlFor = 'field-' + param.key;
+    label.textContent = param.label;
+
+    var wrap = document.createElement('span');
+    wrap.className = 'row-value';
+
+    var input = document.createElement('input');
+    input.type = 'number';
+    input.id = 'field-' + param.key;
+    input.setAttribute('inputmode', 'decimal');
+    input.value = currentBike().inputs[param.key];
+    var rule = Geo.INPUT_RULES[param.key];
+    input.min = rule.min;
+    input.max = rule.max;
+    input.step = rule.step;
+    input.setAttribute('aria-label', param.label + ' (' + param.unit + ')');
+    if (param.hint) input.title = param.hint;
+
+    var unit = document.createElement('span');
+    unit.className = 'unit';
+    unit.textContent = param.unit;
+
+    wrap.appendChild(input);
+    wrap.appendChild(unit);
+    row.appendChild(label);
+    row.appendChild(wrap);
+
+    input.addEventListener('input', function () {
+      var raw = parseFloat(input.value);
+      if (!isFinite(raw)) {
+        row.classList.add('is-invalid');
+        return;
+      }
+      row.classList.remove('is-invalid');
+      var bike = currentBike();
+      bike.inputs[param.key] = raw;
+      bike.presetId = null;
+      apply();
+    });
+
+    input.addEventListener('change', function () {
+      var parsed = parseFloat(input.value);
+      var bike = currentBike();
+      if (!isFinite(parsed)) {
+        input.value = bike.inputs[param.key];
+      } else {
+        var clamped = clampInput(param.key, parsed);
+        bike.inputs[param.key] = clamped;
+        input.value = clamped;
+      }
+      row.classList.remove('is-invalid');
+      apply();
+    });
+
+    return { row: row, input: input, valueEl: null };
+  }
+
+  function buildComputedRow(param) {
+    var row = document.createElement('div');
+    row.className = 'row computed-row';
+    row.dataset.key = param.key;
+    row.tabIndex = 0;
+
+    var label = document.createElement('span');
+    label.className = 'row-label';
+    label.textContent = param.label;
+
+    var value = document.createElement('output');
+    value.className = 'value';
+
+    var unit = document.createElement('span');
+    unit.className = 'unit';
+    unit.textContent = param.unit;
+
+    var wrap = document.createElement('span');
+    wrap.className = 'row-value';
+    wrap.appendChild(value);
+    wrap.appendChild(unit);
+
+    row.appendChild(label);
+    row.appendChild(wrap);
+
+    return { row: row, input: null, valueEl: value };
+  }
+
+  function wireRowHighlight(row, param) {
+    row.addEventListener('mouseenter', function () { setActive(param.key); });
+    row.addEventListener('mouseleave', function () {
+      if (!row.contains(document.activeElement)) clearActive(param.key);
+    });
+    row.addEventListener('focusin', function () { setActive(param.key); });
+    row.addEventListener('focusout', function (event) {
+      if (!row.contains(event.relatedTarget)) clearActive(param.key);
+    });
+  }
+
+  function handleFittingInput(field, input, row, clamp) {
+    var raw = input.value.trim();
+    var fitting = currentBike().fitting;
+    if (raw === '') {
+      fitting[field.key] = null;
+    } else {
+      var value = parseFloat(raw);
+      if (!isFinite(value)) {
+        row.classList.add('is-invalid');
+        return;
+      }
+      if (clamp) {
+        var rule = Geo.FITTING_RULES[field.key];
+        if (rule) value = Math.min(rule.max, Math.max(rule.min, value));
+        input.value = fittingDisplayValue(value);
+      }
+      fitting[field.key] = value;
+    }
+    row.classList.remove('is-invalid');
+
+    if (field.key.indexOf('stem') === 0) {
+      fitting.stemBasis = (field.key === 'stemLength' || field.key === 'stemAngle')
+        ? 'lengthAngle' : 'reachStack';
+      Geo.syncStem(fitting);
+      refreshFittingInputs(field.key);
+    }
+    applyFittingChange();
+  }
+
+  function buildFittingInputRow(field) {
+    var row = document.createElement('div');
+    row.className = 'row fit-row';
+    row.dataset.key = field.key;
+    row.tabIndex = 0;
+
+    var label = document.createElement('label');
+    label.className = 'row-label';
+    label.htmlFor = 'fit-' + field.key;
+    label.textContent = field.label;
+
+    var wrap = document.createElement('span');
+    wrap.className = 'row-value';
+
+    var input = document.createElement('input');
+    input.type = 'number';
+    input.id = 'fit-' + field.key;
+    input.placeholder = '\u2014';
+    input.setAttribute('inputmode', 'decimal');
+    input.setAttribute('aria-label', field.label + ' (optional, ' + field.unit + ')');
+    var rule = Geo.FITTING_RULES[field.key];
+    if (rule) {
+      input.min = rule.min;
+      input.max = rule.max;
+      input.step = rule.step;
+    }
+    if (field.hint) input.title = field.hint;
+
+    var unit = document.createElement('span');
+    unit.className = 'unit';
+    unit.textContent = field.unit;
+
+    wrap.appendChild(input);
+    wrap.appendChild(unit);
+    row.appendChild(label);
+    row.appendChild(wrap);
+
+    input.addEventListener('input', function () {
+      handleFittingInput(field, input, row, false);
+    });
+    input.addEventListener('change', function () {
+      handleFittingInput(field, input, row, true);
+    });
+
+    return { row: row, input: input, valueEl: null };
+  }
+
+  function buildFittingOutputRow(field) {
+    var row = document.createElement('div');
+    row.className = 'row fit-row fit-derived';
+    row.dataset.key = field.key;
+    row.tabIndex = 0;
+
+    var label = document.createElement('span');
+    label.className = 'row-label';
+    label.textContent = field.label;
+
+    var value = document.createElement('output');
+    value.className = 'fit-value is-missing';
+    value.textContent = '\u2014';
+
+    var unit = document.createElement('span');
+    unit.className = 'unit';
+    unit.textContent = field.unit;
+
+    var wrap = document.createElement('span');
+    wrap.className = 'row-value';
+    wrap.appendChild(value);
+    wrap.appendChild(unit);
+
+    row.appendChild(label);
+    row.appendChild(wrap);
+
+    return { row: row, input: null, valueEl: value };
+  }
+
+  function buildFittingRows() {
+    Geo.FITTING_FIELDS.forEach(function (field) {
+      var target = field.group === 'stem' ? el.fittingStem
+        : (field.group === 'saddle' ? el.fittingSaddle : el.fittingCrank);
+      var built = field.derived ? buildFittingOutputRow(field) : buildFittingInputRow(field);
+      target.appendChild(built.row);
+      state.fittingRefs[field.key] = built;
+      wireRowHighlight(built.row, field);
+    });
+  }
+
+  function buildRows() {
+    var inputCount = 0;
+    var computedCount = 0;
+
+    Geo.PARAMS.forEach(function (param) {
+      var built;
+      if (param.group === 'input') {
+        built = buildInputRow(param);
+        el.inputs.appendChild(built.row);
+        inputCount += 1;
+      } else {
+        built = buildComputedRow(param);
+        el.computed.appendChild(built.row);
+        computedCount += 1;
+      }
+      state.rowByKey[param.key] = built;
+      wireRowHighlight(built.row, param);
+    });
+
+    el.inputCount.textContent = inputCount;
+    el.computedCount.textContent = computedCount;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * SVG export
+   * ------------------------------------------------------------------ */
+  function exportSvg() {
+    var box = state.box || Render.viewBoxFor(state.solved);
+    var source = Render.standaloneSvg(el.svg.innerHTML, box);
+    download('bike-geo.svg', source, 'image/svg+xml');
+    toast('Drawing exported as SVG');
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Events + init
+   * ------------------------------------------------------------------ */
+  function setView(view) {
+    if (view === 'compare' && state.bikes.length < 2) return;
+    state.view = view;
+    state.activeKey = null;
+    updateRowStates();
+    renderDrawing();
+    updateView();
+  }
+
+  function wireEvents() {
+    el.preset.addEventListener('change', function () {
+      var preset = presetById(el.preset.value);
+      if (!preset) return;
+      var bike = currentBike();
+      bike.inputs = Object.assign({}, preset.inputs);
+      bike.presetId = preset.id;
+      syncInputFields();
+      apply();
+      resetTemplateSelection();
+    });
+
+    el.exportBtn.addEventListener('click', exportSvg);
+
+    el.importBtn.addEventListener('click', function () {
+      toast('Online import is reserved for a future version');
+    });
+
+    el.addBike.addEventListener('click', addBike);
+
+    el.alignToggle.addEventListener('click', function () {
+      state.grounded = !state.grounded;
+      updateAlignButton();
+      renderDrawing();
+      toast(state.grounded ? 'Aligned by the ground line' : 'Aligned by the rear axle');
+    });
+
+    el.templateSave.addEventListener('click', saveTemplate);
+    el.templateSelect.addEventListener('change', function () {
+      if (el.templateSelect.value) {
+        loadTemplate(el.templateSelect.value);
+      } else {
+        el.templateDelete.disabled = true;
+      }
+    });
+    el.templateDelete.addEventListener('click', deleteTemplate);
+    el.templateExport.addEventListener('click', exportTemplates);
+    el.templateImport.addEventListener('click', function () {
+      el.templateImportInput.click();
+    });
+    el.templateImportInput.addEventListener('change', function () {
+      importTemplatesFile(el.templateImportInput.files && el.templateImportInput.files[0]);
+      el.templateImportInput.value = '';
+    });
+
+    el.tabs.addEventListener('click', function (event) {
+      var remove = event.target.closest('[data-remove]');
+      if (remove) {
+        removeBike(parseInt(remove.getAttribute('data-remove'), 10));
+        return;
+      }
+      var tab = event.target.closest('.bike-tab');
+      if (tab) selectBike(parseInt(tab.getAttribute('data-index'), 10));
+    });
+
+    el.tabs.addEventListener('keydown', function (event) {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      if (event.target.closest('[data-remove]')) return;
+      var tab = event.target.closest('.bike-tab');
+      if (!tab) return;
+      event.preventDefault();
+      selectBike(parseInt(tab.getAttribute('data-index'), 10));
+    });
+
+    el.viewParams.addEventListener('click', function () { setView('params'); });
+    el.viewCompare.addEventListener('click', function () { setView('compare'); });
+
+    el.compareTable.addEventListener('mouseover', function (event) {
+      var row = event.target.closest('.cmp-row[data-key]');
+      if (row) setActive(row.getAttribute('data-key'));
+    });
+    el.compareTable.addEventListener('mouseleave', function () {
+      if (state.activeKey) clearActive(state.activeKey);
+    });
+  }
+
+  /* Deep links: ?preset=crux&compare=crux,classic&param=stack */
+  function applyUrlState() {
+    var params = new URLSearchParams(window.location.search);
+
+    var preset = presetById(params.get('preset'));
+    if (preset) {
+      state.bikes[0] = createBike(preset);
+      state.selected = 0;
+      syncInputFields();
+    }
+
+    var compare = params.get('compare');
+    if (compare) {
+      compare.split(',').forEach(function (id) {
+        var candidate = presetById(id.trim());
+        if (!candidate || state.bikes.length >= MAX_BIKES) return;
+        var already = state.bikes.some(function (bike) { return bike.presetId === candidate.id; });
+        if (!already) state.bikes.push(createBike(candidate));
+      });
+      if (state.bikes.length > 1) {
+        state.view = 'compare';
+        state.selected = 0;
+      }
+    }
+
+    var view = params.get('view');
+    if (view === 'compare' && state.bikes.length > 1) state.view = 'compare';
+    if (view === 'params') state.view = 'params';
+
+    if (params.get('align') === 'ground') state.grounded = true;
+
+    updateAlignButton();
+    apply();
+
+    var activeKey = params.get('param');
+    var knownKeys = Geo.PARAMS.concat(Geo.FITTING_FIELDS);
+    if (activeKey && knownKeys.some(function (param) { return param.key === activeKey; })) {
+      setActive(activeKey);
+    }
+  }
+
+  function init() {
+    buildPresetSelect();
+    buildRows();
+    buildFittingRows();
+    rebuildTemplateSelect();
+    wireEvents();
+    applyUrlState();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+}());
+
+</script>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bike Geo — parametric bicycle geometry sketch</title>
+  <meta name="description" content="Input the necessary bicycle geometry for up to three bikes, compare them in colour and see the frames drawn on dotted paper.">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="8" cy="21" r="5.6"></circle>
+        <circle cx="24" cy="21" r="5.6"></circle>
+        <path d="M8 21 14.5 9.5 24 21M14.5 9.5h5.6"></path>
+      </svg>
+      <div class="brand-text">
+        <h1>Bike Geo</h1>
+        <p>Input the necessary geometry — the rest is compensated and drawn.</p>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <label class="preset-field">
+        <span>Preset</span>
+        <select id="preset-select" aria-label="Geometry preset for the selected bike"></select>
+      </label>
+      <button id="export-svg" class="btn" type="button" title="Download the current drawing as an SVG file">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0 3-3M8 10 5 7M3 13h10"></path></svg>
+        Export SVG
+      </button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="stage" aria-label="Bike geometry drawing">
+      <svg id="drawing" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"
+           role="img" aria-label="Parametric bicycle line drawing"></svg>
+
+      <div class="bike-legend" id="bike-legend" hidden></div>
+
+      <div class="stage-hint">
+        <span class="hint-dot"></span>
+        Hover a parameter to highlight its line
+      </div>
+      <div class="stage-badge" id="stage-badge">700C / 29" · 26 mm</div>
+
+      <button id="align-toggle" class="align-toggle" type="button" aria-pressed="false"
+              title="Bikes are aligned by the rear axle — click to stand them on the ground line">
+        <span class="align-toggle-dot" aria-hidden="true"></span>
+        On the ground
+      </button>
+    </section>
+
+    <aside class="panel" aria-label="Geometry parameters">
+      <div class="panel-head">
+        <h2>Geometry</h2>
+        <span class="panel-sub">edit → redraw</span>
+      </div>
+
+      <div class="bike-bar">
+        <div id="bike-tabs" class="bike-tabs" role="group" aria-label="Bikes"></div>
+        <button id="add-bike" class="add-bike" type="button" title="Add a bike to compare (max 3)">
+          <span aria-hidden="true">+</span> Add bike
+        </button>
+      </div>
+
+      <div class="template-bar" aria-label="Templates">
+        <button id="template-save" class="template-btn" type="button"
+                title="Save the selected bike's inputs as a template (stored in this browser)">Save template</button>
+        <select id="template-select" class="template-select" aria-label="Saved templates"></select>
+        <button id="template-delete" class="template-delete" type="button"
+                title="Delete the selected template" aria-label="Delete the selected template" disabled>&#215;</button>
+      </div>
+
+      <div class="template-links">
+        <button id="template-export" class="link-btn" type="button"
+                title="Download all saved templates as a JSON file">Export templates</button>
+        <span class="link-sep">&#183;</span>
+        <button id="template-import" class="link-btn" type="button"
+                title="Import templates from a JSON file">Import templates</button>
+        <input id="template-import-input" type="file" accept=".json,application/json" hidden>
+      </div>
+
+      <div class="view-switch" role="tablist" aria-label="Panel view">
+        <button id="view-params" class="view-btn is-selected" type="button" role="tab" aria-selected="true">Parameters</button>
+        <button id="view-compare" class="view-btn" type="button" role="tab" aria-selected="false" disabled>Compare</button>
+      </div>
+
+      <div class="panel-scroll">
+        <div id="view-params-body">
+          <section class="group">
+            <h3>Necessary inputs <span id="input-count" class="count"></span></h3>
+            <div id="inputs-list" class="rows"></div>
+          </section>
+
+          <section class="group">
+            <h3>Compensated <span id="computed-count" class="count"></span></h3>
+            <div id="computed-list" class="rows"></div>
+          </section>
+
+          <section class="group fitting-group" aria-label="Personal Fitting Area">
+            <h3>Personal Fitting Area <span class="optional-pill">optional</span></h3>
+            <div class="fitting-card">
+              <div class="fit-block">
+                <div class="fit-title">Stem</div>
+                <div id="fitting-stem" class="rows fit-rows"></div>
+                <p class="fit-note">
+                  Length + Angle &#8596; Reach + Stack. Angle is measured from the
+                  perpendicular to the steerer (0&#176; = straight out); positive rises.
+                </p>
+              </div>
+              <div class="fit-block">
+                <div class="fit-title">Saddle / Seatpost</div>
+                <div id="fitting-saddle" class="rows fit-rows"></div>
+              </div>
+              <div class="fit-block">
+                <div class="fit-title">Crankset</div>
+                <div id="fitting-crank" class="rows fit-rows"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div id="view-compare-body" hidden>
+          <section class="group compare-group">
+            <h3>Bike comparison <span id="compare-count" class="count"></span></h3>
+            <div id="compare-table" class="compare-table"></div>
+            <p class="compare-note">Deltas are relative to <strong>Bike A</strong>. Hover a row to highlight that part on every bike.</p>
+          </section>
+        </div>
+
+        <section class="online-card">
+          <div class="online-head">
+            <h3>Online geometry</h3>
+            <span class="pill">planned</span>
+          </div>
+          <p>
+            Pull a published bike's geometry from a URL and fill the inputs.
+            The adapter contract is stubbed in <code>js/datasource.js</code>,
+            so wiring a source later needs no renderer changes.
+          </p>
+          <button id="import-url" class="btn ghost" type="button" disabled
+                  title="Reserved for a future version">
+            Import from URL…
+          </button>
+        </section>
+      </div>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/geometry.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/datasource.js"></script>
+  <script src="js/templates.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

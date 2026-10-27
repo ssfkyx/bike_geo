@@ -1,0 +1,14 @@
+# OS / editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Local verification artefacts
+.verify/
+*.zip
+*.log
+
+# Node (tests need Node, the app does not)
+node_modules/

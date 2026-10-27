@@ -1,0 +1,10 @@
+{
+  "name": "bike-geo",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Parametric bicycle geometry sketch: input the necessary data, the app compensates the rest and draws the frame on dotted paper.",
+  "scripts": {
+    "test": "node tests/geometry.test.js && node tests/render.test.js && node tests/datasource.test.js && node tests/templates.test.js",
+    "test:browser": "powershell -NoProfile -ExecutionPolicy Bypass -File tests/browser/run.ps1"
+  }
+}
